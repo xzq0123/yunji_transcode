@@ -1174,91 +1174,93 @@ static int __init axnet_pci_init(void)
 
 	pr_info("axnet pci init\n");
 
-	if (ep_dev_id >= 0)
-		ax_dev = g_pcie_opt->slot_to_axdev(ep_dev_id);
-	else
-		ax_dev = g_axera_dev_map[0];
-	if (!ax_dev) {
-		pr_err("pcie dev not found\n");
-		return -1;
-	}
-	pr_info("select dev, bus:%x, devfn:%x, vid:%x, pid:%x\n",
-		ax_dev->slot_index, ax_dev->pdev->devfn, ax_dev->pdev->vendor, ax_dev->pdev->device);
-	dev = &ax_dev->pdev->dev;
+	for (int i = 0; i < g_pcie_opt->remote_device_number; i++) {
+		if (ep_dev_id >= 0)
+			ax_dev = g_pcie_opt->slot_to_axdev(ep_dev_id);
+		else
+			ax_dev = g_axera_dev_map[i];
+		if (!ax_dev) {
+			pr_err("pcie dev not found\n");
+			return -1;
+		}
+		pr_info("select dev, bus:%x, devfn:%x, vid:%x, pid:%x\n",
+			ax_dev->slot_index, ax_dev->pdev->devfn, ax_dev->pdev->vendor, ax_dev->pdev->device);
+		dev = &ax_dev->pdev->dev;
 
-	ndev = alloc_etherdev(sizeof(struct axnet_priv));
-	if (!ndev) {
-		ret = -ENOMEM;
-		pr_err("alloc_etherdev() failed\n");
-		goto fail;
-	}
+		ndev = alloc_etherdev(sizeof(struct axnet_priv));
+		if (!ndev) {
+			ret = -ENOMEM;
+			pr_err("alloc_etherdev() failed\n");
+			goto fail;
+		}
 
-	strcpy(ndev->name, INTERFACE_NAME);
-	eth_hw_addr_random(ndev);
-	SET_NETDEV_DEV(ndev, dev);
-	ndev->netdev_ops = &axnet_host_netdev_ops;
-	axnet = netdev_priv(ndev);
-	g_axnet = axnet;
-	axnet->ndev = ndev;
-	axnet->pdev = ax_dev->pdev;
+		strcpy(ndev->name, INTERFACE_NAME);
+		eth_hw_addr_random(ndev);
+		SET_NETDEV_DEV(ndev, dev);
+		ndev->netdev_ops = &axnet_host_netdev_ops;
+		axnet = netdev_priv(ndev);
+		g_axnet = axnet;
+		axnet->ndev = ndev;
+		axnet->pdev = ax_dev->pdev;
 
-#ifndef SHMEM_FROM_MASTER
-	/* use the second half of bar0 mem in ep */
-	bar0_size = ax_dev->bar_info[BAR_0].size / 2;
-	axnet->mmio_base = ax_dev->bar_virt[BAR_0] + bar0_size;
-	if (!axnet->mmio_base) {
-		ret = -ENOMEM;
-		dev_err(&axnet->pdev->dev, "get BAR0 address failed\n");
-		goto free_netdev;
-	}
-	pr_debug("BAR0 virtual addr: 0x%llx, size: 0x%x\n", (u64) axnet->mmio_base, bar0_size);
-#endif
+	#ifndef SHMEM_FROM_MASTER
+		/* use the second half of bar0 mem in ep */
+		bar0_size = ax_dev->bar_info[BAR_0].size / 2;
+		axnet->mmio_base = ax_dev->bar_virt[BAR_0] + bar0_size;
+		if (!axnet->mmio_base) {
+			ret = -ENOMEM;
+			dev_err(&axnet->pdev->dev, "get BAR0 address failed\n");
+			goto free_netdev;
+		}
+		pr_debug("BAR0 virtual addr: 0x%llx, size: 0x%x\n", (u64) axnet->mmio_base, bar0_size);
+	#endif
 
-#if USE_MAILBOX
-	axnet->mail_box_virt = ax_dev->bar_virt[BAR_1];
-	if (!axnet->mail_box_virt) {
-		ret = -ENOMEM;
-		dev_err(&axnet->pdev->dev, "get BAR1 address failed\n");
-		goto free_netdev;
-	}
-	pr_debug("BAR1 virt addr: 0x%llx\n", (u64) axnet->mail_box_virt);
-#endif
+	#if USE_MAILBOX
+		axnet->mail_box_virt = ax_dev->bar_virt[BAR_1];
+		if (!axnet->mail_box_virt) {
+			ret = -ENOMEM;
+			dev_err(&axnet->pdev->dev, "get BAR1 address failed\n");
+			goto free_netdev;
+		}
+		pr_debug("BAR1 virt addr: 0x%llx\n", (u64) axnet->mail_box_virt);
+	#endif
 
-#ifndef SHMEM_FROM_MASTER
-	pr_debug("addr[0]: %llx\n", ((u64 *) axnet->mmio_base)[0]);
-	/* Setup BAR0 meta data */
-	axnet_host_setup_bar0_md(axnet);
-#endif
+	#ifndef SHMEM_FROM_MASTER
+		pr_debug("addr[0]: %llx\n", ((u64 *) axnet->mmio_base)[0]);
+		/* Setup BAR0 meta data */
+		axnet_host_setup_bar0_md(axnet);
+	#endif
 
-	netif_napi_add(ndev, &axnet->napi, axnet_host_poll);
+		netif_napi_add(ndev, &axnet->napi, axnet_host_poll);
 
-	ndev->mtu = AXNET_DEFAULT_MTU;
+		ndev->mtu = AXNET_DEFAULT_MTU;
 
-	ret = register_netdev(ndev);
-	if (ret) {
-		dev_err(&axnet->pdev->dev, "register_netdev() fail: %d\n", ret);
-		goto del_napi;
-	}
-	netif_carrier_off(ndev);
+		ret = register_netdev(ndev);
+		if (ret) {
+			dev_err(&axnet->pdev->dev, "register_netdev() fail: %d\n", ret);
+			goto del_napi;
+		}
+		netif_carrier_off(ndev);
 
-	axnet->rx_link_state = DIR_LINK_STATE_DOWN;
-	axnet->tx_link_state = DIR_LINK_STATE_DOWN;
-	axnet->os_link_state = OS_LINK_STATE_DOWN;
-	mutex_init(&axnet->link_state_lock);
-	init_waitqueue_head(&axnet->link_state_wq);
-	INIT_LIST_HEAD(&axnet->ep2h_empty_list);
+		axnet->rx_link_state = DIR_LINK_STATE_DOWN;
+		axnet->tx_link_state = DIR_LINK_STATE_DOWN;
+		axnet->os_link_state = OS_LINK_STATE_DOWN;
+		mutex_init(&axnet->link_state_lock);
+		init_waitqueue_head(&axnet->link_state_wq);
+		INIT_LIST_HEAD(&axnet->ep2h_empty_list);
 
-	spin_lock_init(&axnet->ep2h_empty_lock);
-	spin_lock_init(&axnet->mailbox_lock);
-	spin_lock_init(&axnet->irq_lock);
-	spin_lock_init(&axnet->h2ep_lock);
+		spin_lock_init(&axnet->ep2h_empty_lock);
+		spin_lock_init(&axnet->mailbox_lock);
+		spin_lock_init(&axnet->irq_lock);
+		spin_lock_init(&axnet->h2ep_lock);
 
-	ret =
-	    devm_request_irq(&ax_dev->pdev->dev, pci_irq_vector(ax_dev->pdev, MSI_IRQ_NUM),
-			     axnet_irq_handler, IRQF_SHARED, ndev->name, ndev);
-	if (ret < 0) {
-		dev_err(&axnet->pdev->dev, "request_irq() fail: %d\n", ret);
-		goto unreg_netdev;
+		ret =
+			devm_request_irq(&ax_dev->pdev->dev, pci_irq_vector(ax_dev->pdev, MSI_IRQ_NUM),
+					axnet_irq_handler, IRQF_SHARED, ndev->name, ndev);
+		if (ret < 0) {
+			dev_err(&axnet->pdev->dev, "request_irq() fail: %d\n", ret);
+			goto unreg_netdev;
+		}
 	}
 
 
