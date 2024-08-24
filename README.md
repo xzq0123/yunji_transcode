@@ -13,19 +13,17 @@
 | rk3568|aarch64 | ubuntu 20.4    |5.10.160|    ![pass](https://img.shields.io/badge/pass-green)  | ![pass](https://img.shields.io/badge/pass-green)|
 
 ## AX650 linux
-若主板是AX650的主板，那么无需先加载驱动，可直接启动算力卡。  
+若主板是AX650的主板，已经预先加载好，无需先加载驱动，可直接启动算力卡。
 1. 通过 `lspci` 检测算力卡是否存在  
 ![lspci](./assets/suanlika/1.png)  
 如图所示，出现厂商id：1f4b，设备id：0650，说明检测到了。  
 
-2. 在主板执行 `axdl`，启动算力卡  
+2. 在主板执行 `axdl`，会通过PCIE推送小卡的启动镜像文件到算力卡中。执行`axdl`之后，算力卡会启动进入文件系统，并且执行默认的脚本，创建一个虚拟网卡，名字默认为ax-net0，并且配置网络，默认IP是`192.168.1.1`。
 ![axdl](./assets/suanlika/2.png)  
-`axdl`将会与算力卡通信，并启动算力卡。  
 
-3. 算力卡通过`axdl`启动之后，将会自动为算力卡创建一个虚拟网卡，IP是`192.168.1.1`。 在执行`axdl`之后，静待30秒，等待算力卡启动以及创建虚拟网卡，然后，在主板创建虚拟网卡，方便与算力卡通信。在主板执行 `pcie_net2.sh master`    
+3. 在主板先执行`sleep 30`，静待30秒，然后再执行 `pcie_net2.sh master`。脚本会在主板会加载驱动以及配置IP地址，这将会在主板创建一个虚拟网卡，名字为`ax-net0`，IP为 `192.168.1.2`
 ![pcie](./assets/suanlika/3.png)  
-这将会在主板创建一个虚拟网卡，IP为 `192.168.1.2`
-  
+
 4. 接下来可通过`ping` 检测是否可以和算力卡通信  
 ![ping](./assets/suanlika/4.png)
 
@@ -33,19 +31,17 @@
 ![ssh](./assets/suanlika/5.png)
 
 
-## intel / rk3588 x86_64
-### ubuntu20.04
+## intel / rk3588 （ubuntu20.04）
 确认算力卡已经插在主板上了。  
 1. 通过 `lspci` 检测算力卡是否存在  
 ![lspci](./assets/suanlika/6.png)  
 检测到该设备，出现厂商id：1f4b，设备id：0650，说明检测到了。  
 
-2. 要启动算力卡，首先加载驱动，将我们提供的压缩包`x86_pcie.tgz`解压。再执行编译，将会得到编译后的驱动。
+2. 要启动算力卡，首先加载驱动，将我们提供的压缩包`x86_pcie.tgz`解压（文件比较大，默认没提供），再执行编译，将会得到编译后的驱动。
     ```
     tar -zxvf x86_pcie.tgz
     cd x86_pcie
-    make
-    make install
+    make clean all install
     ```
     编译得到的驱动在该目录：  
     ![tree](./assets/suanlika/7.png)  
@@ -56,20 +52,19 @@
 ![lsmod](./assets/suanlika/9.png)  
 显示加载成功  
 
-4. 驱动加载成功后，就可以启动算力卡了，先将我们提供的压缩包`axdl.tar.gz` 解压，  
+4. 驱动加载成功后，就可以启动算力卡了，先将我们提供的压缩包`slave.tar.gz` 解压，  
 ![tar](./assets/suanlika/10.png)  
-解压之后，得到`axdl`执行文件，`sample_pcie_boot`可执行程序，`slave`包含算力卡的文件系统。  
+解压之后，`slave`包含算力卡的启动镜像和文件系统。  
 
-5. 将刚在x86_pcie下编译得到的`sample_pcie_boot`替换`axdl.tar.gz`解压后得到的`sample_pcie_boot`,  
+5. 将刚在x86_pcie下编译得到的`sample_pcie_boot`拷贝到系统的/usr/bin目录，并且修改axdl脚本文件，将`SLAVE_IMAGE_PATH=/opt/slave`修改为压缩包`slave.tar.gz` 解压之后的路径slave。
 ![cp](./assets/suanlika/11.png)  
 
 6. 执行`sudo ./axdl` 启动算力卡  
-![axdl](./assets/suanlika/12.png)  
-如果算力卡显示绿灯，及正常启动了算力卡。算力卡启动后，会自动创建一个虚拟网卡，IP为`192.168.1.1`  
+![axdl](./assets/suanlika/12.png) 
 
 7. 为主板创建虚拟网卡，方便与算力卡通信，进入到`x86_pcie`目录下，执行以下脚本命令:  
 ![pcie](./assets/suanlika/13.png)  
-该脚本会加载一个网卡驱动`ax_pcie_net2`, 并在主板创建一个虚拟网卡，IP为`192.168.1.2`  
+该脚本会加载一个网卡驱动`ax_pcie_net2.ko`, 并在主板创建一个虚拟网卡`ax-net0`，IP为`192.168.1.2`  
 ![pcie](./assets/suanlika/14.png)  
 
 8. 尝试与算力卡进行通信：  
@@ -193,3 +188,16 @@ make
 ```
 
 通过重新编译内核构建工具，这些工具将与当前系统架构匹配，从而避免 `Exec format error` 错误。然后再次尝试编译模块应该能够成功。
+
+
+## 常见问题
+1.执行`axdl`之后，再执行`dmesg`发现报错：Failed to get Msl interrupts。  \
+首先排除是不是系统的影响，要开内核是否开启CONFIG_PCI_MSI的宏，然后要看电脑的主板BIOS是否限制中断。 \
+如果是华硕主板可以修改关闭虚拟化，发现没有其他的报错。 
+![sh](./assets/zh2.jpg)  
+
+2.执行 `insmod ax_pcie_host_dev.ko`,再执行`dmesg`发现报错：failed to allocate mem space.  \
+可以修改内存分配这部分代码为 `dma_alloc_coherent(&pdev->dev, size + alignment, &org_phys_addr, GFP_KERNEL | __GFP_ZERO);`的size为 1024*1024，即可解决问题。
+
+3.没有ubuntu22.04和18.04的对应怎么办？ \
+20.04可以直接兼容18.04，24.04可以兼容22.04.
