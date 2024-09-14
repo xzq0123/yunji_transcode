@@ -193,7 +193,7 @@ make
 ## 常见问题
 1.执行`axdl`之后，再执行`dmesg`发现报错：Failed to get Msl interrupts。  \
 首先排除是不是系统的影响，要开内核是否开启CONFIG_PCI_MSI的宏，然后要看电脑的主板BIOS是否限制中断。 \
-如果是华硕主板可以修改关闭虚拟化，发现没有其他的报错。 
+如果是华硕主板修改`开启虚拟化`选项，发现没有其他的报错。 
 ![sh](./assets/zh2.jpg)  
 
 2.执行 `insmod ax_pcie_host_dev.ko`,再执行`dmesg`发现报错：failed to allocate mem space.  \
