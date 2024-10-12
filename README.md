@@ -1,16 +1,121 @@
 # AI 算力卡启动流程
 
 ### 已验证平台
-| 平台 |arch | OS  |内核      | AX650N         | DeepX|
-|-----| --|--------|--- | ------------ |-----|
-| AX650|aarch64|Linux | 5.15.73     | ![pass](https://img.shields.io/badge/pass-green)  |
-| intel| x86_64 | Ubuntu 20.04|5.4.0-182-generic| ![pass](https://img.shields.io/badge/pass-green)   |![pass](https://img.shields.io/badge/pass-green)|
-| rk3588 | aarch64|Ubuntu 20.04| 5.10.110-rockchip-rk3588| ![pass](https://img.shields.io/badge/pass-green)|![pass](https://img.shields.io/badge/pass-green)|
-| intel|x86_64 | CentOS 9      |5.14.0-446.el9.x86_64 |    ![pass](https://img.shields.io/badge/pass-green)  | ![pass](https://img.shields.io/badge/pass-green)
-| intel|x86_64 | Ubuntu 24.04     |6.8.0-31-generic |    ![pass](https://img.shields.io/badge/pass-green)  | ![pass](https://img.shields.io/badge/pass-green)|
-| Xilinx|aarch64 | petalinux    |5.4.0 |    ![pass](https://img.shields.io/badge/pass-green)  |  ![pass](https://img.shields.io/badge/pass-green) |
-| nxp|aarch64 | ubuntu    |6.6|      | ![pass](https://img.shields.io/badge/pass-green)
-| rk3568|aarch64 | ubuntu 20.4    |5.10.160|    ![pass](https://img.shields.io/badge/pass-green)  | ![pass](https://img.shields.io/badge/pass-green)|
+| 平台     | arch   |    OS       | 内核       | AX650N         | DeepX|
+|-------  | -------|--------      |---------- | ------------   |-----|
+| intel   |x86_64  | Ubuntu20.04  |5.4.0      | ![pass](https://img.shields.io/badge/pass-green)  |![pass](https://img.shields.io/badge/pass-green) |
+| intel   |x86_64  | Ubuntu24.04  |6.8.0      | ![pass](https://img.shields.io/badge/pass-green)  |![pass](https://img.shields.io/badge/pass-green) |
+| intel   |x86_64  | CentOS 9     |5.14.0     | ![pass](https://img.shields.io/badge/pass-green)  |![pass](https://img.shields.io/badge/pass-green) |
+| AX650   |arm64   | Linux        | 5.15.73   | ![pass](https://img.shields.io/badge/pass-green)  |                                                 |
+| rk3588  |arm64   | Ubuntu 20.04 | 5.10.110  | ![pass](https://img.shields.io/badge/pass-green)  |![pass](https://img.shields.io/badge/pass-green) |
+| Xilinx  |arm64   | petalinux    |5.4.0      | ![pass](https://img.shields.io/badge/pass-green)  |![pass](https://img.shields.io/badge/pass-green) |
+| nxp     |arm64   | ubuntu       |6.6        |                                                   |![pass](https://img.shields.io/badge/pass-green) |
+| rk3568  |arm64   | ubuntu 20.4  |5.10.160   | ![pass](https://img.shields.io/badge/pass-green)  |![pass](https://img.shields.io/badge/pass-green) |
+
+## intel(ubuntu/centos)
+ 
+1.通过 `lspci` 检测算力卡是否存在  
+确认算力卡已经插在主板上,出现厂商id：1f4b，设备id：0650，说明检测到了。  
+```
+zhenjie@yunji:~$ lspci | grep 650
+b3:00.0 Multimedia video controller: Device 1f4b:0650 (rev 01)
+```
+
+
+2.获取驱动代码,在pc中进行编译驱动并加载。
+
+``` shell
+#进入对应操作系统的目录，如当前为ubuntu20.04
+zhenjie@ubuntu:~/$ git clone git@github.com:Wzj910997331/yunji_driver.git
+zhenjie@ubuntu:~/$ cd yunji_driver/ubuntu_20.04/ax650N_x86_64_pcie_driver/
+zhenjie@ubuntu:~/$ tree -L 1
+.
+├── axdl
+├── boot
+├── common
+├── host_dev
+├── include
+├── Makefile
+├── mmb
+├── msg
+├── net
+├── sample
+└── tools
+zhenjie@ubuntu:~/$ make clean all install
+```
+
+编译得到的驱动在out/ko目录下：  
+
+``` shell
+zhenjie@ubuntu:~$ tree out/ko/
+out/ko/
+├── ax_pcie_boot.ko
+├── ax_pcie_host_dev.ko
+├── ax_pcie_mmb.ko
+├── ax_pcie_msg.ko
+└── ax_pcie_net2.ko
+```
+
+3.加载驱动  
+
+``` shell
+#要严格按照顺序insmod相应的ko
+zhenjie@yunji:~/$ sudo insmod out/ko/ax_pcie_host_dev.ko 
+zhenjie@yunji:~/$ sudo insmod out/ko/ax_pcie_boot.ko 
+zhenjie@yunji:~/$ sudo insmod out/ko/ax_pcie_msg.ko 
+zhenjie@yunji:~/$ sudo insmod out/ko/ax_pcie_mmb.ko 
+# 检查驱动是否被正确加载,如下显示说明加载成功
+zhenjie@yunji:~/$ lsmod | grep ax
+ax_pcie_mmb       16384 0
+ax_pcie_boot      16384 0
+ax_pcie_msg       16384 0
+ax_pcie_host_dev  90112 2 ax_pcie_boot ax_pcie_msg
+```
+
+4.将压缩包`slave.tar.gz` 解压，  解压之后，`slave`包含算力卡的启动镜像。\
+解压之后如图所示.
+
+``` shell
+#slave.tar.gz压缩包可以从百度网盘下载
+通过百度网盘分享的文件：slave.tar.gz
+链接：https://pan.baidu.com/s/1msJtbJ4ihsmtIJmXwzizOA?pwd=yunj 
+提取码：yunj
+
+
+zhenjie@ubuntu:/opt/slave$ tree -L 1
+.
+├── atf_bl31.img
+├── AX650_slave.dtb
+├── Image
+├── rootfs.ext4
+├── spl_AX650_slave_signed.bin
+└── u-boot.bin
+```
+
+
+5.将编译生成out/sample目录下`sample_pcie_boot`拷贝到系统的/usr/bin目录. \
+并且修改axdl脚本文件，将`SLAVE_IMAGE_PATH=/opt/slave`修改为压缩包`slave.tar.gz` 解压之后的路径slave。
+``` shell
+#使能环境变量
+zhenjie@ubuntu:~/$ cp out/sample/sample_pcie_boot /usr/bin/
+zhenjie@ubuntu:~/$ cat axdl
+#!/bin/sh
+#SLAVE_IMAGE_PATH=/opt/slave
+```
+
+6.执行`sudo ./axdl` 启动算力卡  
+![axdl](./assets/suanlika/12.png) 
+
+7.为主板创建虚拟网卡，方便与算力卡通信，进入到`x86_pcie`目录下，执行以下脚本命令:  
+![pcie](./assets/suanlika/13.png)  
+该脚本会加载一个网卡驱动`ax_pcie_net2.ko`, 并在主板创建一个虚拟网卡`ax-net0`，IP为`192.168.1.2`  
+![pcie](./assets/suanlika/14.png)  
+
+8.尝试与算力卡进行通信：  
+![ping](./assets/suanlika/15.png)  
+通信成功。通过`ssh`进入算力卡  
+![ssh](./assets/suanlika/16.png)  
+默认密码是`123456`。
 
 ## AX650 linux
 若主板是AX650的主板，已经预先加载好，无需先加载驱动，可直接启动算力卡。
@@ -31,47 +136,6 @@
 ![ssh](./assets/suanlika/5.png)
 
 
-## intel / rk3588 （ubuntu20.04）
-确认算力卡已经插在主板上了。  
-1. 通过 `lspci` 检测算力卡是否存在  
-![lspci](./assets/suanlika/6.png)  
-检测到该设备，出现厂商id：1f4b，设备id：0650，说明检测到了。  
-
-2. 要启动算力卡，首先加载驱动，将我们提供的压缩包`x86_pcie.tgz`解压（文件比较大，默认没提供），再执行编译，将会得到编译后的驱动。
-    ```
-    tar -zxvf x86_pcie.tgz
-    cd x86_pcie
-    make clean all install
-    ```
-    编译得到的驱动在该目录：  
-    ![tree](./assets/suanlika/7.png)  
-
-3. 加载驱动  
- ![ko](./assets/suanlika/8.png)  
-执行`lsmod`, 检查驱动是否被正确加载  
-![lsmod](./assets/suanlika/9.png)  
-显示加载成功  
-
-4. 驱动加载成功后，就可以启动算力卡了，先将我们提供的压缩包`slave.tar.gz` 解压，  
-![tar](./assets/suanlika/10.png)  
-解压之后，`slave`包含算力卡的启动镜像和文件系统。  
-
-5. 将刚在x86_pcie下编译得到的`sample_pcie_boot`拷贝到系统的/usr/bin目录，并且修改axdl脚本文件，将`SLAVE_IMAGE_PATH=/opt/slave`修改为压缩包`slave.tar.gz` 解压之后的路径slave。
-![cp](./assets/suanlika/11.png)  
-
-6. 执行`sudo ./axdl` 启动算力卡  
-![axdl](./assets/suanlika/12.png) 
-
-7. 为主板创建虚拟网卡，方便与算力卡通信，进入到`x86_pcie`目录下，执行以下脚本命令:  
-![pcie](./assets/suanlika/13.png)  
-该脚本会加载一个网卡驱动`ax_pcie_net2.ko`, 并在主板创建一个虚拟网卡`ax-net0`，IP为`192.168.1.2`  
-![pcie](./assets/suanlika/14.png)  
-
-8. 尝试与算力卡进行通信：  
-![ping](./assets/suanlika/15.png)  
-通信成功。通过`ssh`进入算力卡  
-![ssh](./assets/suanlika/16.png)  
-默认密码是`123456`。
 
 ### Centos 9 内核 5.14.0-446.el9.x86_64
 centos的算力卡启动流程和ubuntu20.04基本一致，`x86_pcie.tgz` 替换成 `x86_64_pcie_centos9_kernel_5.14.0-446.el9.x86_64.tar.gz`即可
