@@ -1,6 +1,6 @@
 # AI 算力卡启动流程
 
-### 已验证平台
+## 已验证平台
 | 平台     | arch   |    OS       | 内核       | AX650N         | DeepX|
 |-------  | -------|--------      |---------- | ------------   |-----|
 | intel   |x86_64  | Ubuntu20.04  |5.4.0      | ![pass](https://img.shields.io/badge/pass-green)  |![pass](https://img.shields.io/badge/pass-green) |
@@ -12,7 +12,7 @@
 | nxp     |arm64   | ubuntu       |6.6        |                                                   |![pass](https://img.shields.io/badge/pass-green) |
 | rk3568  |arm64   | ubuntu 20.4  |5.10.160   | ![pass](https://img.shields.io/badge/pass-green)  |![pass](https://img.shields.io/badge/pass-green) |
 
-## intel(ubuntu/centos)
+### intel(ubuntu/centos)
  
 1.通过 `lspci` 检测算力卡是否存在  
 确认算力卡已经插在主板上,出现厂商id：1f4b，设备id：0650，说明检测到了。  
@@ -117,7 +117,7 @@ zhenjie@ubuntu:~/$ cat axdl
 ![ssh](./assets/suanlika/16.png)  
 默认密码是`123456`。
 
-## AX650 linux
+### AX650 linux
 若主板是AX650的主板，已经预先加载好，无需先加载驱动，可直接启动算力卡。
 1. 通过 `lspci` 检测算力卡是否存在  
 ![lspci](./assets/suanlika/1.png)  
@@ -144,8 +144,8 @@ centos的算力卡启动流程和ubuntu20.04基本一致，`x86_pcie.tgz` 替换
 启动流程与Ubuntu20.4一致，`x86_pcie.tgz` 替换成 `x86_64_pcie_ubuntu24.04_kernel_6.8.tar.gz`即可
 
 
-## 赛灵思
-### petalinux 内核 5.4
+### 赛灵思
+#### petalinux 内核 5.4
 1. 检测算力卡是否被检测到了  
 ![lspci](./assets/xlinx/1.png)  
 出现```1f4b:0650```的标志，说明检测到了。  
@@ -165,9 +165,9 @@ centos的算力卡启动流程和ubuntu20.04基本一致，`x86_pcie.tgz` 替换
 ![sh](./assets/xlinx/5.png)  
 通信正常
 
-## NXP
+### NXP
 
-## rk3568 内核 4.19.232
+#### rk3568 内核 4.19.232
 
 启动流程和上述Ubuntu一致。  
 注：编译需要的linux-headers 包含各种头文件，可以让设备具有本地编译驱动的能力。需要去[下载](https://www.t-firefly.com/doc/download/107.html).
@@ -200,7 +200,7 @@ make: *** [Makefile:30: all] Error 2
 
 以下是解决这个问题的步骤：
 
-### 步骤 1：安装所需工具
+#### 步骤 1：安装所需工具
 
 确保你有必要的工具安装来编译内核源代码。你需要 `make`、`gcc` 等编译工具。
 
@@ -209,7 +209,7 @@ sudo apt-get update
 sudo apt-get install build-essential
 ```
 
-### 步骤 2：重新编译内核构建工具
+#### 步骤 2：重新编译内核构建工具
 
 进入内核头文件目录并重新编译构建工具：
 
@@ -220,7 +220,7 @@ make scripts
 
 这会重新编译所有用于构建内核模块的脚本和工具，以确保它们与当前系统架构匹配。
 
-### 步骤 3：再次尝试编译模块
+#### 步骤 3：再次尝试编译模块
 
 返回到模块源码目录并再次尝试编译模块：
 
@@ -229,7 +229,7 @@ cd /root/x86_pcie
 make
 ```
 
-### 示例：
+#### 示例：
 
 以下是完整的示例步骤：
 
