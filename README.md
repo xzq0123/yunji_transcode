@@ -260,6 +260,9 @@ make
 如果是华硕主板配置为开启`虚拟化支持`选项。 
 ![sh](./assets/zh2.jpg)  
 
+如果是技嘉主板配置为开启`VT-d`选项。 
+![sh](./assets/jijia.jpg)  
+
 2.执行 `insmod ax_pcie_host_dev.ko`,再执行`dmesg`发现报错：failed to allocate mem space.  \
 可以修改内存分配这部分代码为 `dma_alloc_coherent(&pdev->dev, size + alignment, &org_phys_addr, GFP_KERNEL | __GFP_ZERO);`的size为 1024*1024，即可解决问题。
 
