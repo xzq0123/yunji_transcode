@@ -65,7 +65,7 @@ struct boot_attr {
 
     struct ax_device_info remote_devices[MAX_DEVICE_NUM];
 };
-#if 1
+#if 0
 static void boot_find_err_type(int ret)
 {
     switch (ret & ~STATUS_READ_FAIL) {
@@ -398,8 +398,7 @@ int main(int argc, char *argv[])
             printf("pcie reset device %d\n", TargetId);
             reset = true;
             pcie_reset_device(dev_fd, &attr);
-            get_all_devices(dev_fd, &attr);
-	    break;
+            break;
         case 'b':
             if (optarg != NULL) {
                 src_addr = (unsigned long int)strtol(optarg, 0, 16);

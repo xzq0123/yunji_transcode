@@ -220,6 +220,7 @@ struct axera_dev {
 #else
 	struct pci_dev *pdev;
 #endif
+	void *priv_data;
 };
 
 struct ax_pcie_operation {

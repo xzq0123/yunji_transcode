@@ -118,6 +118,7 @@ static void _del_mem_list(ax_pcie_msg_handle_t *handle)
 
 static int ax_msg_userdev_release(struct inode *inode, struct file *file)
 {
+	unsigned long flags = 0;
 	ax_pcie_msg_handle_t *msg_handle =
 	    (ax_pcie_msg_handle_t *) file->private_data;
 	struct ax_transfer_handle *transfer_handle = NULL;
@@ -133,10 +134,12 @@ static int ax_msg_userdev_release(struct inode *inode, struct file *file)
 
 	usrdev_setopt_null(msg_handle);
 
+	spin_lock_irqsave(&g_msg_usr_lock, flags);
 	/* if mem list empty means no data comming */
 	if (!list_empty(&msg_handle->mem_list)) {
 		_del_mem_list(msg_handle);
 	}
+	spin_unlock_irqrestore(&g_msg_usr_lock, flags);
 
 	transfer_handle = (struct ax_transfer_handle *)msg_handle->pci_handle;
 	ax_pcie_msg_close(transfer_handle);
@@ -200,7 +203,7 @@ static ssize_t ax_pcie_msg_read(struct file *file, char __user *buf,
 	ax_pcie_msg_handle_t *msg_handle =
 	    (ax_pcie_msg_handle_t *) file->private_data;
 	struct list_head *entry, *tmp;
-	struct ax_mem_list *mem;
+	struct ax_mem_list *mem = NULL;
 	unsigned int len = 0;
 	unsigned long readed = 0;
 	unsigned long flags = 0;
@@ -221,6 +224,8 @@ static ssize_t ax_pcie_msg_read(struct file *file, char __user *buf,
 	if (!list_empty(&msg_handle->mem_list)) {
 		list_for_each_safe(entry, tmp, &msg_handle->mem_list) {
 			mem = list_entry(entry, struct ax_mem_list, head);
+			if (mem == NULL)
+				goto msg_read_err1;
 			len = mem->data_len;
 			if (len > count) {
 				msg_trace(MSG_ERR,
@@ -257,10 +262,12 @@ static ssize_t ax_pcie_msg_read(struct file *file, char __user *buf,
 	}
 
 msg_read_err1:
-	kfree(mem);
+	if (mem)
+		kfree(mem);
 	spin_unlock_irqrestore(&g_msg_usr_lock, flags);
 msg_read_err2:
 	up(&handle_sem);
+
 	return -1;
 }
 
@@ -417,6 +424,7 @@ ioctl_end:
 static unsigned int ax_pcie_msg_poll(struct file *file,
 				     struct poll_table_struct *table)
 {
+	unsigned long flags = 0;
 	ax_pcie_msg_handle_t *handle =
 	    (ax_pcie_msg_handle_t *) file->private_data;
 	if (!handle) {
@@ -429,12 +437,15 @@ static unsigned int ax_pcie_msg_poll(struct file *file,
 		return POLLREMOVE;
 	}
 
+	spin_lock_irqsave(&g_msg_usr_lock, flags);
 	/* if mem list empty means no data comming */
 	if (!list_empty(&handle->mem_list)) {
+		spin_unlock_irqrestore(&g_msg_usr_lock, flags);
 		msg_trace(MSG_DEBUG,
 			  "poll not empty handle 0x%lx", (unsigned long)handle);
 		return POLLIN | POLLRDNORM;
 	}
+	spin_unlock_irqrestore(&g_msg_usr_lock, flags);
 
 	return 0;
 }
@@ -457,6 +468,7 @@ static struct miscdevice ax_pcie_msg_usrdev = {
 
 static int __init ax_pcie_msg_init(void)
 {
+	printk("ax pcie msg init\n");
 
 	sema_init(&ioctl_sem, 1);
 	sema_init(&handle_sem, 1);

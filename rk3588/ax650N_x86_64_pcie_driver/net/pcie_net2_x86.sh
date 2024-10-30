@@ -10,7 +10,7 @@ function start_rc_net()
     echo 3 > /proc/sys/vm/drop_caches
     insmod ./out/ko/ax_pcie_net2.ko
     sleep 0.1
-    ifconfig ax-net0 ${IP}
+    ifconfig enp1s0 ${IP}
 
     echo "start sucess, IP: ${IP}"
 }

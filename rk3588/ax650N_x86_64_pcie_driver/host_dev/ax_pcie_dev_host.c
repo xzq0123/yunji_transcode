@@ -193,8 +193,7 @@ static int ax_pcie_alloc_shmem_space(struct axera_dev *ax_dev)
 	}
 
 	if (!shm_phys_addr) {
-		int size1 = 1024;
-		space = dma_alloc_coherent(&pdev->dev, size1, &org_phys_addr, GFP_KERNEL | __GFP_ZERO);
+		space = dma_alloc_coherent(&pdev->dev, size + alignment, &org_phys_addr, GFP_KERNEL | __GFP_ZERO);
 		if (!space) {
 			dev_err(&pdev->dev, "failed to allocate mem space\n");
 			return -2;

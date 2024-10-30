@@ -55,12 +55,6 @@ struct axnet_priv {
 
 };
 
-/* use bus number to specify a dev */
-static int ep_dev_id = -1;
-module_param(ep_dev_id, int, S_IRUGO);
-
-static struct axnet_priv *g_axnet;
-
 static void axnet_host_process_ctrl_msg(struct axnet_priv *axnet);
 
 
@@ -1160,8 +1154,7 @@ static int axnet_host_poll(struct napi_struct *napi, int budget)
 	return work_done;
 }
 
-
-static int __init axnet_pci_init(void)
+static int __init axnet_pci_init_one(int idx)
 {
 	struct axnet_priv *axnet;
 	struct net_device *ndev;
@@ -1174,14 +1167,12 @@ static int __init axnet_pci_init(void)
 
 	pr_info("axnet pci init\n");
 
-	if (ep_dev_id >= 0)
-		ax_dev = g_pcie_opt->slot_to_axdev(ep_dev_id);
-	else
-		ax_dev = g_axera_dev_map[0];
+	ax_dev = g_axera_dev_map[idx];
 	if (!ax_dev) {
 		pr_err("pcie dev not found\n");
 		return -1;
 	}
+    ax_dev->priv_data = NULL;
 	pr_info("select dev, bus:%x, devfn:%x, vid:%x, pid:%x\n",
 		ax_dev->slot_index, ax_dev->pdev->devfn, ax_dev->pdev->vendor, ax_dev->pdev->device);
 	dev = &ax_dev->pdev->dev;
@@ -1198,7 +1189,7 @@ static int __init axnet_pci_init(void)
 	SET_NETDEV_DEV(ndev, dev);
 	ndev->netdev_ops = &axnet_host_netdev_ops;
 	axnet = netdev_priv(ndev);
-	g_axnet = axnet;
+	ax_dev->priv_data = axnet;
 	axnet->ndev = ndev;
 	axnet->pdev = ax_dev->pdev;
 
@@ -1273,12 +1264,16 @@ free_netdev:
 fail:
 	return ret;
 }
-module_init(axnet_pci_init);
 
-static void __exit axnet_pci_exit(void)
+static void axnet_pci_exit_one(int idx)
 {
-	struct axnet_priv *axnet = g_axnet;
-	struct net_device *ndev = axnet->ndev;
+	struct axera_dev *ax_dev = g_axera_dev_map[idx];
+	struct axnet_priv *axnet = (struct axnet_priv *)ax_dev->priv_data;
+	struct net_device *ndev;
+	if (axnet == NULL) {
+		return;
+	}
+	ndev = axnet->ndev;
 
 	pr_info("axnet pci exit\n");
 
@@ -1287,6 +1282,25 @@ static void __exit axnet_pci_exit(void)
 	devm_free_irq(&axnet->pdev->dev, pci_irq_vector(axnet->pdev, MSI_IRQ_NUM), ndev);
 	netif_napi_del(&axnet->napi);
 	free_netdev(ndev);
+}
+
+static int __init axnet_pci_init(void)
+{
+	int i;
+	for (i = 0; i < g_pcie_opt->remote_device_number; i++) {
+		axnet_pci_init_one(i);
+	}
+	return 0;
+}
+
+module_init(axnet_pci_init);
+
+static void __exit axnet_pci_exit(void)
+{
+	int i;
+	for (i = 0; i < g_pcie_opt->remote_device_number; i++) {
+		axnet_pci_exit_one(i);
+	}
 }
 module_exit(axnet_pci_exit);
 

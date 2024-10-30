@@ -83,6 +83,32 @@ out:
     return Ret;
 }
 
+AX_S32 PCIe_InitRc(AX_U32 TargetId, AX_U32 PortNum)
+{
+    AX_S32 Ret = 0;
+
+    printf("axera pcie rc init...\n");
+
+    /* Sharemem init */
+    Ret = AX_PCIe_ShareMemInit(TargetId);
+    if (Ret < 0) {
+        printf("host share mem init fail\n");
+        return -1;
+    }
+
+    /* PCIe open msg port */
+    printf("target dev:0x%x, port:%d\n", TargetId, PortNum);
+    Ret = AX_PCIe_OpenMsgPort(TargetId, PortNum);
+    if (Ret < 0) {
+        printf("open msg port fail\n");
+        return -1;
+    }
+
+    printf("axera pcie rc init ok\n");
+
+    return 0;
+}
+
 AX_S32 Send_File(AX_CHAR *File, AX_S32 Target, AX_U8 *MM_VirtualAddr, AX_U64 MM_PhyBaseAddr)
 {
     AX_S32 FileFd;
@@ -201,7 +227,7 @@ AX_S32 AX_PCIe_Sendfile(AX_CHAR *File, AX_S32 TargetId)
     AX_U64 DmaBufferSize = MAX_TRANSFER_SIZE;
     AX_S32 Ret = AX_SUCCESS;
 
-    Ret = AX_PCIe_InitRcMsg(1, PCIE_TRANSFER_CMD_PORT);
+    Ret = PCIe_InitRc(TargetId, PCIE_TRANSFER_CMD_PORT);
     if (Ret == -1) {
         printf("init pcie rc msg failed!\n");
         return AX_FAILURE;
@@ -234,7 +260,7 @@ AX_S32 AX_PCIe_Recvfile(AX_CHAR *File, AX_S32 TargetId)
     AX_U64 DmaBufferSize = MAX_TRANSFER_SIZE;
     AX_S32 Ret = AX_SUCCESS;
 
-    Ret = AX_PCIe_InitRcMsg(1, PCIE_TRANSFER_CMD_PORT);
+    Ret = PCIe_InitRc(TargetId, PCIE_TRANSFER_CMD_PORT);
     if (Ret == -1) {
         printf("init pcie rc msg failed!\n");
         return AX_FAILURE;
