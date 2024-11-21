@@ -1,0 +1,3 @@
+KERNEL=="msg_userdev", GROUP="<users>", MODE="0666"
+KERNEL=="ax_mmb_dev", GROUP="<users>", MODE="0666"
+KERNEL=="axcl_host", GROUP="<users>", MODE="0666"

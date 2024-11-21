@@ -1,0 +1,1005 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>5. AXCL 安装 &#8212; AXCL V1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!-- 
+    this give us a css class that will be invisible only if js is disabled 
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=26a4bc78f4c0ddb94549" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=26a4bc78f4c0ddb94549" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=26a4bc78f4c0ddb94549"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=26a4bc78f4c0ddb94549" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=26a4bc78f4c0ddb94549" />
+
+    <script src="_static/documentation_options.js?v=667c5ddb"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'doc_guide_setup';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="6. AXCL 快速上手" href="doc_guide_quick_start.html" />
+    <link rel="prev" title="4. AXCL API" href="doc_guide_axcl_api.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">AXCL V1.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">目录</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="doc_update_info.html">1. 版本修改说明</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doc_introduction.html">2. AXCL 简介</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doc_guide_hardware.html">3. AXCL 硬件信息</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doc_guide_axcl_api.html">4. AXCL API</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">5. AXCL 安装</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doc_guide_quick_start.html">6. AXCL 快速上手</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doc_guide_samples.html">7. AXCL Samples 说明</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doc_guide_faq.html">8. AXCL FAQ</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/doc_guide_setup.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>AXCL 安装</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#raspberry-pi-5">5.1. Raspberry Pi 5</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">5.1.1. 准备工作</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">5.1.2. 生成或获取安装包</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">5.1.3. 安装安装包</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">5.1.4. 启动子卡</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">5.1.5. 卸载安装</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rk3588">5.2. RK3588 等开发板</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#centos-9">5.3. CentOS 9</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">5.3.1. 系统信息</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">5.3.2. 环境搭建</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rpm">5.3.3. rpm 安装</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id8">5.3.4. rpm 卸载</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kylin-10">5.4. <span class="xref myst">Kylin 10</span></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id9">5.4.1. 系统信息</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">5.4.2. 环境搭建</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#deb">5.4.3. deb 安装</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id11">5.4.4. deb 卸载</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ubuntu">5.5. ubuntu</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#others">5.6. Others</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="axcl">
+<h1><span class="section-number">5. </span>AXCL 安装<a class="headerlink" href="#axcl" title="Link to this heading">#</a></h1>
+<section id="raspberry-pi-5">
+<h2><span class="section-number">5.1. </span>Raspberry Pi 5<a class="headerlink" href="#raspberry-pi-5" title="Link to this heading">#</a></h2>
+<section id="id1">
+<h3><span class="section-number">5.1.1. </span>准备工作<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<p>在树莓派 5 上安装 AX650 加速卡时，首先需要准备一块 M.2 HAT+ 扩展板。参考<a class="reference external" href="https://www.raspberrypi.com/news/using-m-2-hat-with-raspberry-pi-5/">官方链接</a>，M.2 HAT+ 的官方版本只支持 2230、2242 的 M.2 M Key 卡，通常 AX650 加速卡是 2280 的，您可能需要考虑购买第三方的支持 2280 长度的 M.2 HAT+ 扩展板。</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>根据树莓派硬件批次不同，可能需要更新一下树莓派的 EEPROM 设置。具体步骤如下：</p>
+</div>
+<p>如同 PC 中的 BIOS，EEPROM 设置独立于烧录 OS 的 TF 卡，烧录最新的树莓派镜像或者切换镜像版本并不会主动更新 EEPROM 的设置。首先执行 update：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>full-upgrade
+</pre></div>
+</div>
+<p>然后检查一下 EEPROM 中的版本：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>rpi-eeprom-update
+</pre></div>
+</div>
+<p>如果看到的日期早于 <code class="docutils literal notranslate"><span class="pre">2023</span> <span class="pre">年</span> <span class="pre">12</span> <span class="pre">月</span> <span class="pre">6</span> <span class="pre">日</span></code>，运行以下命令以打开 Raspberry Pi 配置 CLI：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>raspi-config
+</pre></div>
+</div>
+<p>在 Advanced Options &gt; Bootloader Version （引导加载程序版本） 下，选择 Latest （最新）。然后，使用 Finish 或 ESC 键退出 raspi-config。</p>
+<p>执行以下命令，将固件更新到最新版本。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>rpi-eeprom-update<span class="w"> </span>-a
+</pre></div>
+</div>
+<p>最后使用 <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">reboot</span></code> 重新启动。重启后就完成了 EEPROM 中 firmware 的更新。</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>取决于使用的树莓派 kernel 状态，目前的修改是以 2024年11月18日 以前的树莓派刚烧录好的系统为例进行说明的，客户需要根据树莓派系统更新情况识别这个步骤是否必须。</p>
+</div>
+<p>在当前的树莓派 kernel 和 M.2 HAT+ 组合中，可能会遇到如下限制：</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>PCIE Device 无法识别</p></li>
+<li><p>PCIE MSI IRQ 无法申请多个</p></li>
+</ul>
+</div></blockquote>
+<p>这些问题将导致安装失败或者子卡起不来。需要检查 Raspberry Pi 5 <code class="docutils literal notranslate"><span class="pre">/boot/firmware/config.txt</span></code> 文件，并进行修改。</p>
+<p>如果是第三方的兼容 M.2 HAT+ 产品，需要注意供电问题；在 config.txt 中添加如下描述：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">dtparam</span><span class="o">=</span>pciex1
+</pre></div>
+</div>
+<p>该描述可以默认打开 PCIE 功能；然后继续增加 PCIE 的设备描述：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">dtoverlay</span><span class="o">=</span>pciex1-compat-pi5,no-mip
+</pre></div>
+</div>
+<p>完成修改并重启后，可以使用 <code class="docutils literal notranslate"><span class="pre">lspci</span></code> 命令检查加速卡是否正确被识别：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>axera@raspberrypi:~<span class="w"> </span>$<span class="w"> </span>lspci
+<span class="m">0000</span>:00:00.0<span class="w"> </span>PCI<span class="w"> </span>bridge:<span class="w"> </span>Broadcom<span class="w"> </span>Inc.<span class="w"> </span>and<span class="w"> </span>subsidiaries<span class="w"> </span>BCM2712<span class="w"> </span>PCIe<span class="w"> </span>Bridge<span class="w"> </span><span class="o">(</span>rev<span class="w"> </span><span class="m">21</span><span class="o">)</span>
+<span class="m">0000</span>:01:00.0<span class="w"> </span>Multimedia<span class="w"> </span>video<span class="w"> </span>controller:<span class="w"> </span>Axera<span class="w"> </span>Semiconductor<span class="w"> </span>Co.,<span class="w"> </span>Ltd<span class="w"> </span>Device<span class="w"> </span><span class="m">0650</span><span class="w"> </span><span class="o">(</span>rev<span class="w"> </span><span class="m">01</span><span class="o">)</span>
+<span class="m">0001</span>:00:00.0<span class="w"> </span>PCI<span class="w"> </span>bridge:<span class="w"> </span>Broadcom<span class="w"> </span>Inc.<span class="w"> </span>and<span class="w"> </span>subsidiaries<span class="w"> </span>BCM2712<span class="w"> </span>PCIe<span class="w"> </span>Bridge<span class="w"> </span><span class="o">(</span>rev<span class="w"> </span><span class="m">21</span><span class="o">)</span>
+<span class="m">0001</span>:01:00.0<span class="w"> </span>Ethernet<span class="w"> </span>controller:<span class="w"> </span>Raspberry<span class="w"> </span>Pi<span class="w"> </span>Ltd<span class="w"> </span>RP1<span class="w"> </span>PCIe<span class="w"> </span><span class="m">2</span>.0<span class="w"> </span>South<span class="w"> </span>Bridge
+</pre></div>
+</div>
+<p>其中 <code class="docutils literal notranslate"><span class="pre">Multimedia</span> <span class="pre">video</span> <span class="pre">controller:</span> <span class="pre">Axera</span> <span class="pre">Semiconductor</span> <span class="pre">Co.,</span> <span class="pre">Ltd</span> <span class="pre">Device</span> <span class="pre">0650</span> <span class="pre">(rev</span> <span class="pre">01)</span></code> 就是 AX650 加速卡。</p>
+</section>
+<section id="id2">
+<h3><span class="section-number">5.1.2. </span>生成或获取安装包<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<p>可以从随 AX650 SDK 发布的发布包中获取已经随版本编译好的 <code class="docutils literal notranslate"><span class="pre">axcl_host_aarch64_V2.XX.X_202XXX.deb</span></code>，或使用 SDK 自行编译，其中编译生成的产物 <code class="docutils literal notranslate"><span class="pre">.deb</span></code> 的脚本可以根据需要自行修改定制。此外，树莓派可用的 OS 种类众多，这里主要以 <code class="docutils literal notranslate"><span class="pre">debian</span></code> 系列依赖 <code class="docutils literal notranslate"><span class="pre">.deb</span></code> 安装包的系统为例。</p>
+<p>SDK 编译的命令参考如下：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>axcl/build
+make<span class="w"> </span><span class="nv">host</span><span class="o">=</span>arm64<span class="w"> </span>clean<span class="w"> </span>all<span class="w"> </span>install<span class="w"> </span>-j32
+<span class="nb">cd</span><span class="w"> </span>build
+make<span class="w"> </span><span class="nv">p</span><span class="o">=</span>AX650_card<span class="w"> </span>clean<span class="w"> </span>all<span class="w"> </span>install<span class="w"> </span>axp<span class="w"> </span>-j128
+</pre></div>
+</div>
+<p>编译完成后，arm64 deb 包生成在 build/out 下。</p>
+</section>
+<section id="id3">
+<h3><span class="section-number">5.1.3. </span>安装安装包<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>开发板需要编译支持，依赖 gcc, make, patch, linux-header-$(uname -r) 这几个包。需要提前安装好，或者保证安装时网络可用。</p>
+</div>
+<p>将 aarch64 deb 包复制到树莓派开发板上，运行安装命令：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>dpkg<span class="w"> </span>-i<span class="w"> </span>axcl_host_aarch64_V2.16.1_20241118020146_NO4446.deb
+</pre></div>
+</div>
+<p>安装将很快完成。安装时会自动增加环境变量，使得安装的 .so 和可执行程序可用。需要注意的是，如果需要可执行程序立即可用，还需要更新 bash 终端的环境：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span><span class="w"> </span>/etc/profile
+</pre></div>
+</div>
+<p>如果是 ssh 的方式远程连接的板卡，还可以选择重连 ssh 进行自动更新(本机终端登录还可以重开一个终端进行自动更新)。</p>
+</section>
+<section id="id4">
+<h3><span class="section-number">5.1.4. </span>启动子卡<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p>deb 包安装完成后将会自动启动子卡，无需再执行 <code class="docutils literal notranslate"><span class="pre">axclboot</span></code> 启动子卡</p></li>
+<li><p>主机启动时，将会自动启动子卡</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="id5">
+<h3><span class="section-number">5.1.5. </span>卸载安装<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>dpkg<span class="w"> </span>-r<span class="w"> </span>axclhost
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>卸载的包名不是安装包的名字，是项目包名，即 axclhost。</p>
+</div>
+<p>deb 包卸载时，会自动 reset 子卡，子卡进入pcie download mode.</p>
+</section>
+</section>
+<section id="rk3588">
+<h2><span class="section-number">5.2. </span>RK3588 等开发板<a class="headerlink" href="#rk3588" title="Link to this heading">#</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>RK3588、RK3568 等开发板的 deb 安装流程，除去环境配置，其它步骤与 <code class="docutils literal notranslate"><span class="pre">Raspberry</span> <span class="pre">Pi</span> <span class="pre">5</span></code> 安装流程一样，不再单独说明；请参考树莓派的安装流程进行安装即可。</p>
+</div>
+</section>
+<section id="centos-9">
+<h2><span class="section-number">5.3. </span>CentOS 9<a class="headerlink" href="#centos-9" title="Link to this heading">#</a></h2>
+<section id="id6">
+<h3><span class="section-number">5.3.1. </span>系统信息<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<p>参考环境的 CentOS 9 环境如下：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>uname<span class="w"> </span>-a
+Linux<span class="w"> </span>localhost.localdomain<span class="w"> </span><span class="m">5</span>.14.0-522.el9.x86_64<span class="w"> </span><span class="c1">#1 SMP PREEMPT_DYNAMIC Sun Oct 20 13:04:34 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux</span>
+<span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>
+<span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>uname<span class="w"> </span>-r
+<span class="m">5</span>.14.0-522.el9.x86_64
+<span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>
+<span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>cat<span class="w"> </span>/etc/os-release<span class="w"> </span>
+<span class="nv">NAME</span><span class="o">=</span><span class="s2">&quot;CentOS Stream&quot;</span>
+<span class="nv">VERSION</span><span class="o">=</span><span class="s2">&quot;9&quot;</span>
+<span class="nv">ID</span><span class="o">=</span><span class="s2">&quot;centos&quot;</span>
+<span class="nv">ID_LIKE</span><span class="o">=</span><span class="s2">&quot;rhel fedora&quot;</span>
+<span class="nv">VERSION_ID</span><span class="o">=</span><span class="s2">&quot;9&quot;</span>
+<span class="nv">PLATFORM_ID</span><span class="o">=</span><span class="s2">&quot;platform:el9&quot;</span>
+<span class="nv">PRETTY_NAME</span><span class="o">=</span><span class="s2">&quot;CentOS Stream 9&quot;</span>
+<span class="nv">ANSI_COLOR</span><span class="o">=</span><span class="s2">&quot;0;31&quot;</span>
+<span class="nv">LOGO</span><span class="o">=</span><span class="s2">&quot;fedora-logo-icon&quot;</span>
+<span class="nv">CPE_NAME</span><span class="o">=</span><span class="s2">&quot;cpe:/o:centos:centos:9&quot;</span>
+<span class="nv">HOME_URL</span><span class="o">=</span><span class="s2">&quot;https://centos.org/&quot;</span>
+<span class="nv">BUG_REPORT_URL</span><span class="o">=</span><span class="s2">&quot;https://issues.redhat.com/&quot;</span>
+<span class="nv">REDHAT_SUPPORT_PRODUCT</span><span class="o">=</span><span class="s2">&quot;Red Hat Enterprise Linux 9&quot;</span>
+<span class="nv">REDHAT_SUPPORT_PRODUCT_VERSION</span><span class="o">=</span><span class="s2">&quot;CentOS Stream&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h3><span class="section-number">5.3.2. </span>环境搭建<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<ol class="arabic">
+<li><p>更新软件包：<code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">yum</span> <span class="pre">update</span></code></p></li>
+<li><p>安装内核源码：<code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">yum</span> <span class="pre">install</span> <span class="pre">-y</span> <span class="pre">kernel-devel</span> <span class="pre">kernel-headers</span></code></p></li>
+<li><p>修改 <code class="docutils literal notranslate"><span class="pre">grub</span></code> 文件添加 <code class="docutils literal notranslate"><span class="pre">reserved</span> <span class="pre">cma</span> <span class="pre">size</span></code>，转码卡建议设置为 256MB：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>cat<span class="w"> </span>/etc/default/grub
+<span class="nv">GRUB_TIMEOUT</span><span class="o">=</span><span class="m">5</span>
+<span class="nv">GRUB_DISTRIBUTOR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>sed<span class="w"> </span><span class="s1">&#39;s, release .*$,,g&#39;</span><span class="w"> </span>/etc/system-release<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nv">GRUB_DEFAULT</span><span class="o">=</span>saved
+<span class="nv">GRUB_DISABLE_SUBMENU</span><span class="o">=</span><span class="nb">true</span>
+<span class="nv">GRUB_TERMINAL_OUTPUT</span><span class="o">=</span><span class="s2">&quot;console&quot;</span>
+<span class="nv">GRUB_CMDLINE_LINUX</span><span class="o">=</span><span class="s2">&quot;crashkernel=1G-4G:192M,4G-64G:256M,64G-:512M resume=/dev/mapper/cs-swap rd.lvm.lv=cs/root rd.lvm.lv=cs/swap rhgb cma=256M&quot;</span>
+<span class="nv">GRUB_DISABLE_RECOVERY</span><span class="o">=</span><span class="s2">&quot;true&quot;</span>
+<span class="nv">GRUB_ENABLE_BLSCFG</span><span class="o">=</span><span class="nb">true</span>
+</pre></div>
+</div>
+<p><img alt="" src="_images/centos_grub_info.png" /></p>
+</li>
+<li><p>更新 grub：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>su
+grub2-mkconfig<span class="w"> </span>-o<span class="w"> </span>/boot/grub2/grub.cfg
+grub2-editenv<span class="w"> </span>-<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>grub2-editenv<span class="w"> </span>-<span class="w"> </span>list<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>kernelopts<span class="k">)</span><span class="s2"> cma=256M&quot;</span>
+grubby<span class="w"> </span>--update-kernel<span class="o">=</span>ALL<span class="w"> </span>--args<span class="o">=</span><span class="s2">&quot;cma=256M&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p>关闭 SELinux：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>cat<span class="w"> </span>/etc/selinux/config
+
+<span class="c1"># This file controls the state of SELinux on the system.</span>
+<span class="c1"># SELINUX= can take one of these three values:</span>
+<span class="c1">#     enforcing - SELinux security policy is enforced.</span>
+<span class="c1">#     permissive - SELinux prints warnings instead of enforcing.</span>
+<span class="c1">#     disabled - No SELinux policy is loaded.</span>
+<span class="c1"># See also:</span>
+<span class="c1"># https://docs.fedoraproject.org/en-US/quick-docs/getting-started-with-selinux/#getting-started-with-selinux-selinux-states-and-modes</span>
+<span class="c1">#</span>
+<span class="c1"># NOTE: In earlier Fedora kernel builds, SELINUX=disabled would also</span>
+<span class="c1"># fully disable SELinux during boot. If you need a system with SELinux</span>
+<span class="c1"># fully disabled instead of SELinux running with no policy loaded, you</span>
+<span class="c1"># need to pass selinux=0 to the kernel command line. You can use grubby</span>
+<span class="c1"># to persistently set the bootloader to boot with selinux=0:</span>
+<span class="c1">#</span>
+<span class="c1">#    grubby --update-kernel ALL --args selinux=0</span>
+<span class="c1">#</span>
+<span class="c1"># To revert back to SELinux enabled:</span>
+<span class="c1">#</span>
+<span class="c1">#    grubby --update-kernel ALL --remove-args selinux</span>
+<span class="c1">#</span>
+<span class="nv">SELINUX</span><span class="o">=</span>disabled
+<span class="c1"># SELINUXTYPE= can take one of these three values:</span>
+<span class="c1">#     targeted - Targeted processes are protected,</span>
+<span class="c1">#     minimum - Modification of targeted policy. Only selected processes are protected.</span>
+<span class="c1">#     mls - Multi Level Security protection.</span>
+<span class="nv">SELINUXTYPE</span><span class="o">=</span>targeted
+</pre></div>
+</div>
+<p><img alt="" src="_images/centos_selinux.png" /></p>
+</li>
+<li><p>安装 patch rpm-build 包：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>patch
+sudo<span class="w"> </span>yum<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>rpm-build
+</pre></div>
+</div>
+</li>
+<li><p>重启，执行 <code class="docutils literal notranslate"><span class="pre">reboot</span></code> 或 <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">reboot</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dmesg</span> <span class="pre">|</span> <span class="pre">grep</span> <span class="pre">cma</span></code> 查看 CMA reserved 是否设置成功：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>dmesg<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>cma
+<span class="o">[</span><span class="w">    </span><span class="m">0</span>.000000<span class="o">]</span><span class="w"> </span>Command<span class="w"> </span>line:<span class="w"> </span><span class="nv">BOOT_IMAGE</span><span class="o">=(</span>hd0,msdos2<span class="o">)</span>/vmlinuz-5.14.0-522.el9.x86_64<span class="w"> </span><span class="nv">root</span><span class="o">=</span>/dev/mapper/cs-root<span class="w"> </span>ro<span class="w"> </span><span class="nv">crashkernel</span><span class="o">=</span>1G-4G:192M,4G-64G:256M,64G-:512M<span class="w"> </span><span class="nv">resume</span><span class="o">=</span>/dev/mapper/cs-swap<span class="w"> </span>rd.lvm.lv<span class="o">=</span>cs/root<span class="w"> </span>rd.lvm.lv<span class="o">=</span>cs/swap<span class="w"> </span>rhgb<span class="w"> </span>quiet<span class="w"> </span><span class="nv">cma</span><span class="o">=</span>256M
+<span class="o">[</span><span class="w">    </span><span class="m">0</span>.009093<span class="o">]</span><span class="w"> </span>cma:<span class="w"> </span>Reserved<span class="w"> </span><span class="m">256</span><span class="w"> </span>MiB<span class="w"> </span>at<span class="w"> </span>0x0000000100000000<span class="w"> </span>on<span class="w"> </span>node<span class="w"> </span>-1
+<span class="o">[</span><span class="w">    </span><span class="m">0</span>.020735<span class="o">]</span><span class="w"> </span>Kernel<span class="w"> </span><span class="nb">command</span><span class="w"> </span>line:<span class="w"> </span><span class="nv">BOOT_IMAGE</span><span class="o">=(</span>hd0,msdos2<span class="o">)</span>/vmlinuz-5.14.0-522.el9.x86_64<span class="w"> </span><span class="nv">root</span><span class="o">=</span>/dev/mapper/cs-root<span class="w"> </span>ro<span class="w"> </span><span class="nv">crashkernel</span><span class="o">=</span>1G-4G:192M,4G-64G:256M,64G-:512M<span class="w"> </span><span class="nv">resume</span><span class="o">=</span>/dev/mapper/cs-swap<span class="w"> </span>rd.lvm.lv<span class="o">=</span>cs/root<span class="w"> </span>rd.lvm.lv<span class="o">=</span>cs/swap<span class="w"> </span>rhgb<span class="w"> </span>quiet<span class="w"> </span><span class="nv">cma</span><span class="o">=</span>256M
+<span class="o">[</span><span class="w">    </span><span class="m">0</span>.040339<span class="o">]</span><span class="w"> </span>Memory:<span class="w"> </span>2252120K/16608544K<span class="w"> </span>available<span class="w"> </span><span class="o">(</span>16384K<span class="w"> </span>kernel<span class="w"> </span>code,<span class="w"> </span>5666K<span class="w"> </span>rwdata,<span class="w"> </span>13072K<span class="w"> </span>rodata,<span class="w"> </span>3996K<span class="w"> </span>init,<span class="w"> </span>7680K<span class="w"> </span>bss,<span class="w"> </span>733484K<span class="w"> </span>reserved,<span class="w"> </span>262144K<span class="w"> </span>cma-reserved<span class="o">)</span>
+<span class="o">[</span><span class="w">    </span><span class="m">0</span>.098563<span class="o">]</span><span class="w"> </span>cma:<span class="w"> </span>Initial<span class="w"> </span>CMA<span class="w"> </span>usage<span class="w"> </span>detected
+</pre></div>
+</div>
+<p><img alt="" src="_images/centos_dmsg_grep_cma.png" /></p>
+</li>
+</ol>
+</section>
+<section id="rpm">
+<h3><span class="section-number">5.3.3. </span>rpm 安装<a class="headerlink" href="#rpm" title="Link to this heading">#</a></h3>
+<p>rpm 的安装分为 2 个步骤：将 <strong>src.rpm</strong> 源码编译成二进制的 rpm，然后安装 rpm。</p>
+<blockquote>
+<div><p>因安装后将自动加载设备固件，因此安装前请确认子卡已和主机正确连接。</p>
+</div></blockquote>
+<ol class="arabic">
+<li><p>源码安装:</p>
+<p>源码使用命令进行安装：<code class="docutils literal notranslate"><span class="pre">rpm</span> <span class="pre">-Uvh</span> <span class="pre">axcl_host-V2.16.0_20241111020148-NO4430.src.rpm</span></code></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="o">]</span>$<span class="w"> </span>rpm<span class="w"> </span>-Uvh<span class="w"> </span>axcl_host-V2.16.0_20241111020148-NO4430.src.rpm
+Updating<span class="w"> </span>/<span class="w"> </span>installing...
+<span class="w">   </span><span class="m">1</span>:axcl_host-V2.16.0_20241111020148-warning:<span class="w"> </span>user<span class="w"> </span>jenkins<span class="w"> </span>does<span class="w"> </span>not<span class="w"> </span>exist<span class="w"> </span>-<span class="w"> </span>using<span class="w"> </span>root
+warning:<span class="w"> </span>group<span class="w"> </span>jenkins<span class="w"> </span>does<span class="w"> </span>not<span class="w"> </span>exist<span class="w"> </span>-<span class="w"> </span>using<span class="w"> </span>root
+warning:<span class="w"> </span>user<span class="w"> </span>jenkins<span class="w"> </span>does<span class="w"> </span>not<span class="w"> </span>exist<span class="w"> </span>-<span class="w"> </span>using<span class="w"> </span>root
+warning:<span class="w"> </span>group<span class="w"> </span>jenkins<span class="w"> </span>does<span class="w"> </span>not<span class="w"> </span>exist<span class="w"> </span>-<span class="w"> </span>using<span class="w"> </span>root
+<span class="c1">################################# [100%]</span>
+</pre></div>
+</div>
+</li>
+<li><p>源码安装完之后，在 <code class="docutils literal notranslate"><span class="pre">$HOME</span></code> 用户目录可以找到 <strong>rmpbuild</strong> 目录（如果是 sudo 安装，目录在 <code class="docutils literal notranslate"><span class="pre">/root</span></code> 下）</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>ls
+Desktop<span class="w">  </span>Documents<span class="w">  </span>Downloads<span class="w">  </span>jingxiaoping<span class="w">  </span>mp4<span class="w">  </span>Music<span class="w">  </span>Pictures<span class="w">  </span>Public<span class="w">  </span>rpmbuild<span class="w">  </span>Templates<span class="w">  </span>Videos
+</pre></div>
+</div>
+</li>
+<li><p>构建 rpm 安装包：</p>
+<p>使用命令 <code class="docutils literal notranslate"><span class="pre">rpmbuild</span> <span class="pre">-bb</span> <span class="pre">--nodebuginfo</span> <span class="pre">rpmbuild/SPECS/axcl_host.spec</span></code> 进行构建：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>rpmbuild<span class="o">]</span>$<span class="w"> </span>rpmbuild<span class="w"> </span>-bb<span class="w"> </span>--nodebuginfo<span class="w"> </span>SPECS/axcl_host.spec
+warning:<span class="w"> </span>bogus<span class="w"> </span>date<span class="w"> </span><span class="k">in</span><span class="w"> </span>%changelog:<span class="w"> </span>Thu<span class="w"> </span>Oct<span class="w"> </span><span class="m">30</span><span class="w"> </span><span class="m">2024</span><span class="w"> </span>root<span class="w"> </span>&lt;root@localhost&gt;<span class="w"> </span>-<span class="w"> </span><span class="m">1</span>.0-1
+setting<span class="w"> </span><span class="nv">SOURCE_DATE_EPOCH</span><span class="o">=</span><span class="m">1730246400</span>
+Executing<span class="o">(</span>%prep<span class="o">)</span>:<span class="w"> </span>/bin/sh<span class="w"> </span>-e<span class="w"> </span>/var/tmp/rpm-tmp.qShrCO
++<span class="w"> </span><span class="nb">umask</span><span class="w"> </span><span class="m">022</span>
++<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/home/axera/rpmbuild/BUILD
++<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/home/axera/rpmbuild/BUILD
++<span class="w"> </span>rm<span class="w"> </span>-rf<span class="w"> </span>axcl
++<span class="w"> </span>/usr/bin/gzip<span class="w"> </span>-dc<span class="w"> </span>/home/axera/rpmbuild/SOURCES/axcl.tar.gz
++<span class="w"> </span>/usr/bin/tar<span class="w"> </span>-xof<span class="w"> </span>-
++<span class="w"> </span><span class="nv">STATUS</span><span class="o">=</span><span class="m">0</span>
++<span class="w"> </span><span class="s1">&#39;[&#39;</span><span class="w"> </span><span class="m">0</span><span class="w"> </span>-ne<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="s1">&#39;]&#39;</span>
++<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>axcl
++<span class="w"> </span>/usr/bin/chmod<span class="w"> </span>-Rf<span class="w"> </span>a+rX,u+w,g-w,o-w<span class="w"> </span>.
+++<span class="w"> </span>cat<span class="w"> </span>/etc/os-release
+++<span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;^VERSION_ID=&#39;</span>
+++<span class="w"> </span>cut<span class="w"> </span>-d<span class="w"> </span><span class="o">=</span><span class="w"> </span>-f2
+++<span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;&quot;&#39;</span>
++<span class="w"> </span><span class="nv">os_version</span><span class="o">=</span><span class="m">9</span>
+++<span class="w"> </span>cat<span class="w"> </span>/etc/os-release
+++<span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;^NAME=&#39;</span>
+++<span class="w"> </span>cut<span class="w"> </span>-d<span class="w"> </span><span class="o">=</span><span class="w"> </span>-f2
+++<span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;&quot;&#39;</span>
++<span class="w"> </span><span class="nv">os_name</span><span class="o">=</span><span class="s1">&#39;CentOS Stream&#39;</span>
++<span class="w"> </span><span class="o">[[</span><span class="w"> </span>CentOS<span class="w"> </span><span class="nv">Stream</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="se">\C\e\n\t\O\S\ \S\t\r\e\a\m</span><span class="w"> </span><span class="o">]]</span>
++<span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="nv">9</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="se">\9</span><span class="w"> </span><span class="o">]]</span>
++<span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;Apply patch for centos stream 9&#39;</span>
+Apply<span class="w"> </span>patch<span class="w"> </span><span class="k">for</span><span class="w"> </span>centos<span class="w"> </span>stream<span class="w"> </span><span class="m">9</span>
++<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/home/axera/rpmbuild/BUILD/axcl/drv/pcie/driver
++<span class="w"> </span>patch<span class="w"> </span>-p3
+patching<span class="w"> </span>file<span class="w"> </span>include/ax_pcie_dev.h
+patching<span class="w"> </span>file<span class="w"> </span>net/rc-net/ax_pcie_net.c
++<span class="w"> </span><span class="nv">RPM_EC</span><span class="o">=</span><span class="m">0</span>
+++<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>-p
++<span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+Executing<span class="o">(</span>%build<span class="o">)</span>:<span class="w"> </span>/bin/sh<span class="w"> </span>-e<span class="w"> </span>/var/tmp/rpm-tmp.l1AJjV
++<span class="w"> </span><span class="nb">umask</span><span class="w"> </span><span class="m">022</span>
++<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/home/axera/rpmbuild/BUILD
++<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>axcl
++<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/home/axera/rpmbuild/BUILD/axcl/drv/pcie/driver
++<span class="w"> </span>make<span class="w"> </span><span class="nv">host</span><span class="o">=</span>x86<span class="w"> </span>clean<span class="w"> </span>all<span class="w"> </span>install<span class="w"> </span>-j8
++<span class="w"> </span><span class="nv">RPM_EC</span><span class="o">=</span><span class="m">0</span>
+++<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>-p
++<span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+Executing<span class="o">(</span>%install<span class="o">)</span>:<span class="w"> </span>/bin/sh<span class="w"> </span>-e<span class="w"> </span>/var/tmp/rpm-tmp.xiLHDC
+...<span class="w"> </span>...
+Checking<span class="w"> </span><span class="k">for</span><span class="w"> </span>unpackaged<span class="w"> </span>file<span class="o">(</span>s<span class="o">)</span>:<span class="w"> </span>/usr/lib/rpm/check-files<span class="w"> </span>/home/axera/rpmbuild/BUILDROOT/axcl_host-1.0-1.el9.x86_64
+Wrote:<span class="w"> </span>/home/axera/rpmbuild/RPMS/x86_64/axcl_host-1.0-1.el9.x86_64.rpm
+Executing<span class="o">(</span>%clean<span class="o">)</span>:<span class="w"> </span>/bin/sh<span class="w"> </span>-e<span class="w"> </span>/var/tmp/rpm-tmp.a78fQ2
++<span class="w"> </span><span class="nb">umask</span><span class="w"> </span><span class="m">022</span>
++<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/home/axera/rpmbuild/BUILD
++<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>axcl
++<span class="w"> </span>/usr/bin/rm<span class="w"> </span>-rf<span class="w"> </span>/home/axera/rpmbuild/BUILDROOT/axcl_host-1.0-1.el9.x86_64
++<span class="w"> </span><span class="nv">RPM_EC</span><span class="o">=</span><span class="m">0</span>
+++<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>-p
++<span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+</pre></div>
+</div>
+</li>
+<li><p>安装 rpm：</p>
+<p>使用命令 <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">rpm</span> <span class="pre">-Uvh</span> <span class="pre">--nodeps</span> <span class="pre">rpmbuild/RPMS/x86_64/axcl_host-1.0-1.el9.x86_64.rpm</span></code> 安装，参考如下：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>rpmbuild<span class="o">]</span>$<span class="w"> </span>sudo<span class="w"> </span>rpm<span class="w"> </span>-Uvh<span class="w"> </span>--nodeps<span class="w"> </span>RPMS/x86_64/axcl_host-1.0-1.el9.x86_64.rpm
+<span class="o">[</span>sudo<span class="o">]</span><span class="w"> </span>password<span class="w"> </span><span class="k">for</span><span class="w"> </span>axera:
+Verifying...<span class="w">                          </span><span class="c1">################################# [100%]</span>
+Preparing...<span class="w">                          </span><span class="c1">################################# [100%]</span>
+Updating<span class="w"> </span>/<span class="w"> </span>installing...
+<span class="w">   </span><span class="m">1</span>:axcl_host-1.0-1.el9<span class="w">              </span><span class="c1">################################# [100%]</span>
+<span class="o">[</span>axera@localhost<span class="w"> </span>rpmbuild<span class="o">]</span>$
+</pre></div>
+</div>
+</li>
+<li><p>加载环境：<code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">/etc/profile</span></code>
+加载环境是为了使 <code class="docutils literal notranslate"><span class="pre">/usr/lib/axcl/</span></code> 下安装的可执行程序可以直接运行；还可以通过断开 <code class="docutils literal notranslate"><span class="pre">ssh</span></code> 重连的方式更新 ssh 环境。下列目录是 rpm 包安装的主要内容：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>axcl<span class="o">]</span>$<span class="w"> </span>ls<span class="w">  </span>/usr/lib/axcl/
+ffmpeg<span class="w">                </span>libaxcl_ive.so<span class="w">      </span>libaxcl_npu.so<span class="w">          </span>libaxcl_pkg.so<span class="w">     </span>libaxcl_skel.debug<span class="w">   </span>libaxcl_vdec.debug<span class="w">  </span>libspdlog.so.1.14.1
+libaxcl_comm.debug<span class="w">    </span>libaxcl_ivps.debug<span class="w">  </span>libaxcl_pcie_dma.debug<span class="w">  </span>libaxcl_ppl.debug<span class="w">  </span>libaxcl_skel.so<span class="w">      </span>libaxcl_vdec.so
+libaxcl_comm.so<span class="w">       </span>libaxcl_ivps.so<span class="w">     </span>libaxcl_pcie_dma.so<span class="w">     </span>libaxcl_ppl.so<span class="w">     </span>libaxcl_sys.debug<span class="w">    </span>libaxcl_venc.debug
+libaxcl_dmadim.debug<span class="w">  </span>libaxcl_lite.debug<span class="w">  </span>libaxcl_pcie_msg.debug<span class="w">  </span>libaxcl_proto.a<span class="w">    </span>libaxcl_sys.so<span class="w">       </span>libaxcl_venc.so
+libaxcl_dmadim.so<span class="w">     </span>libaxcl_lite.so<span class="w">     </span>libaxcl_pcie_msg.so<span class="w">     </span>libaxcl_rt.debug<span class="w">   </span>libaxcl_token.debug<span class="w">  </span>libspdlog.so
+libaxcl_ive.debug<span class="w">     </span>libaxcl_npu.debug<span class="w">   </span>libaxcl_pkg.debug<span class="w">       </span>libaxcl_rt.so<span class="w">      </span>libaxcl_token.so<span class="w">     </span>libspdlog.so.1.14
+<span class="o">[</span>axera@localhost<span class="w"> </span>axcl<span class="o">]</span>$<span class="w"> </span>ls<span class="w">  </span>/usr/bin/axcl/
+axcl_demo<span class="w">       </span>axcl_sample_dmadim<span class="w">  </span>axcl_sample_ivps<span class="w">    </span>axcl_sample_runtime<span class="w">  </span>axcl_sample_sys<span class="w">        </span>axcl_sample_vdec<span class="w">  </span>axcl_smi<span class="w">  </span>launch_transcode.sh
+axcl_run_model<span class="w">  </span>axcl_sample_ive<span class="w">     </span>axcl_sample_memory<span class="w">  </span>axcl_sample_skel<span class="w">     </span>axcl_sample_transcode<span class="w">  </span>axcl_sample_venc<span class="w">  </span>data<span class="w">      </span>ut
+<span class="o">[</span>axera@localhost<span class="w"> </span>axcl<span class="o">]</span>$
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="id8">
+<h3><span class="section-number">5.3.4. </span>rpm 卸载<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
+<p>rpm 包卸载后会自动 reset 子卡，子卡会进入 <code class="docutils literal notranslate"><span class="pre">pcie</span> <span class="pre">download</span> <span class="pre">mode</span></code>。卸载命令如下：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>rpm<span class="w"> </span>-e<span class="w"> </span>axcl_host
+</pre></div>
+</div>
+</section>
+</section>
+<section id="kylin-10">
+<h2><span class="section-number">5.4. </span><a class="reference internal" href="#kylin"><span class="xref myst">Kylin 10</span></a><a class="headerlink" href="#kylin-10" title="Link to this heading">#</a></h2>
+<section id="id9">
+<h3><span class="section-number">5.4.1. </span>系统信息<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
+<p>系统版本：<a class="reference external" href="https://product.kylinos.cn/productCase/171/36">V10 SP1 2403 HWE</a></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>uname<span class="w"> </span>-a
+Linux<span class="w"> </span>localhost.localdomain<span class="w"> </span><span class="m">5</span>.14.0-148.el9.x86_64<span class="w"> </span><span class="c1">#1 SMP PREEMPT_DYNAMIC Fri Aug 19 13:03:55 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux</span>
+<span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>uname<span class="w"> </span>-r
+<span class="m">5</span>.14.0-148.el9.x86_64
+
+<span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>cat<span class="w"> </span>/etc/os-release<span class="w"> </span>
+<span class="nv">NAME</span><span class="o">=</span><span class="s2">&quot;Kylin&quot;</span>
+<span class="nv">VERSION</span><span class="o">=</span><span class="s2">&quot;银河麒麟桌面操作系统V10 (SP1)&quot;</span>
+<span class="nv">VERSION_US</span><span class="o">=</span><span class="s2">&quot;Kylin Linux Desktop V10 (SP1)&quot;</span>
+<span class="nv">ID</span><span class="o">=</span>kylin
+<span class="nv">ID_LIKE</span><span class="o">=</span>debian
+<span class="nv">PRETTY_NAME</span><span class="o">=</span><span class="s2">&quot;Kylin V10 SP1&quot;</span>
+<span class="nv">VERSION_ID</span><span class="o">=</span><span class="s2">&quot;v10&quot;</span>
+<span class="nv">HOME_URL</span><span class="o">=</span><span class="s2">&quot;http://www.kylinos.cn/&quot;</span>
+<span class="nv">SUPPORT_URL</span><span class="o">=</span><span class="s2">&quot;http://www.kylinos.cn/support/technology.html&quot;</span>
+<span class="nv">BUG_REPORT_URL</span><span class="o">=</span><span class="s2">&quot;http://www.kylinos.cn/&quot;</span>
+<span class="nv">PRIVACY_POLICY_URL</span><span class="o">=</span><span class="s2">&quot;http://www.kylinos.cn&quot;</span>
+<span class="nv">VERSION_CODENAME</span><span class="o">=</span>kylin
+<span class="nv">UBUNTU_CODENAME</span><span class="o">=</span>kylin
+<span class="nv">PROJECT_CODENAME</span><span class="o">=</span>V10SP1
+<span class="nv">KYLIN_RELEASE_ID</span><span class="o">=</span><span class="s2">&quot;2403&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id10">
+<h3><span class="section-number">5.4.2. </span>环境搭建<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
+<ol class="arabic">
+<li><p>查看CMA和DMA是否打开？ 即 <code class="docutils literal notranslate"><span class="pre">CONFIG_CMA=y</span></code> 和 <code class="docutils literal notranslate"><span class="pre">CONFIG_DMA_CMA=y</span></code></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>cat<span class="w"> </span>/boot/config-5.10.0-9-generic<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>CMA
+<span class="nv">CONFIG_CMA</span><span class="o">=</span>y
+<span class="c1"># CONFIG_CMA_DEBUG is not set</span>
+<span class="c1"># CONFIG_CMA_DEBUGFS is not set</span>
+<span class="nv">CONFIG_CMA_AREAS</span><span class="o">=</span><span class="m">7</span>
+<span class="nv">CONFIG_NETWORK_SECMARK</span><span class="o">=</span>y
+<span class="nv">CONFIG_NF_CONNTRACK_SECMARK</span><span class="o">=</span>y
+<span class="nv">CONFIG_NETFILTER_XT_TARGET_CONNSECMARK</span><span class="o">=</span>m
+<span class="nv">CONFIG_NETFILTER_XT_TARGET_SECMARK</span><span class="o">=</span>m
+<span class="nv">CONFIG_B43_BCMA</span><span class="o">=</span>y
+<span class="nv">CONFIG_B43_BUSES_BCMA_AND_SSB</span><span class="o">=</span>y
+<span class="c1"># CONFIG_B43_BUSES_BCMA is not set</span>
+<span class="nv">CONFIG_B43_BCMA_PIO</span><span class="o">=</span>y
+<span class="nv">CONFIG_INPUT_CMA3000</span><span class="o">=</span>m
+<span class="nv">CONFIG_INPUT_CMA3000_I2C</span><span class="o">=</span>m
+<span class="nv">CONFIG_BCMA_POSSIBLE</span><span class="o">=</span>y
+<span class="nv">CONFIG_BCMA</span><span class="o">=</span>m
+<span class="nv">CONFIG_BCMA_BLOCKIO</span><span class="o">=</span>y
+<span class="nv">CONFIG_BCMA_HOST_PCI_POSSIBLE</span><span class="o">=</span>y
+<span class="nv">CONFIG_BCMA_HOST_PCI</span><span class="o">=</span>y
+<span class="nv">CONFIG_BCMA_HOST_SOC</span><span class="o">=</span>y
+<span class="nv">CONFIG_BCMA_DRIVER_PCI</span><span class="o">=</span>y
+<span class="nv">CONFIG_BCMA_SFLASH</span><span class="o">=</span>y
+<span class="nv">CONFIG_BCMA_DRIVER_GMAC_CMN</span><span class="o">=</span>y
+<span class="nv">CONFIG_BCMA_DRIVER_GPIO</span><span class="o">=</span>y
+<span class="c1"># CONFIG_BCMA_DEBUG is not set</span>
+<span class="nv">CONFIG_DRM_GEM_CMA_HELPER</span><span class="o">=</span>y
+<span class="nv">CONFIG_DRM_KMS_CMA_HELPER</span><span class="o">=</span>y
+<span class="nv">CONFIG_USB_HCD_BCMA</span><span class="o">=</span>m
+<span class="nv">CONFIG_COMEDI_PCMAD</span><span class="o">=</span>m
+<span class="c1"># CONFIG_ION_CMA_HEAP is not set</span>
+<span class="nv">CONFIG_CRYPTO_CMAC</span><span class="o">=</span>m
+<span class="nv">CONFIG_DMA_CMA</span><span class="o">=</span>y
+<span class="c1"># CONFIG_DMA_PERNUMA_CMA is not set</span>
+<span class="nv">CONFIG_CMA_SIZE_MBYTES</span><span class="o">=</span><span class="m">0</span>
+<span class="nv">CONFIG_CMA_SIZE_SEL_MBYTES</span><span class="o">=</span>y
+<span class="c1"># CONFIG_CMA_SIZE_SEL_PERCENTAGE is not set</span>
+<span class="c1"># CONFIG_CMA_SIZE_SEL_MIN is not set</span>
+<span class="c1"># CONFIG_CMA_SIZE_SEL_MAX is not set</span>
+<span class="nv">CONFIG_CMA_ALIGNMENT</span><span class="o">=</span><span class="m">8</span>
+</pre></div>
+</div>
+</li>
+<li><p>如果kernel config没有打开CMA配置，参考 <a class="reference external" href="https://stackoverflow.com/questions/56508117/how-to-allocate-large-contiguous-memory-regions-in-linux">stackoverflow</a> 帖子配置。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dmesg</span> <span class="pre">|</span> <span class="pre">grep</span> <span class="pre">cma</span></code> 查看CMA reserved的大小</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w">  </span>dmesg<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>cma
+<span class="o">[</span><span class="w">    </span><span class="m">0</span>.000000<span class="o">]</span><span class="w"> </span>Command<span class="w"> </span>line:<span class="w"> </span><span class="nv">BOOT_IMAGE</span><span class="o">=</span>/vmlinuz-5.10.0-9-generic<span class="w"> </span><span class="nv">root</span><span class="o">=</span><span class="nv">UUID</span><span class="o">=</span>c7a8075e-85dc-4a73-84e8-9b5bc3029204<span class="w"> </span>ro<span class="w"> </span><span class="nv">cma</span><span class="o">=</span>128MB<span class="w"> </span>quiet<span class="w"> </span>splash<span class="w"> </span><span class="nv">loglevel</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">resume</span><span class="o">=</span><span class="nv">UUID</span><span class="o">=</span>d27e8de7-dc17-47ab-92c6-5e7e34bca463<span class="w"> </span><span class="nv">security</span><span class="o">=</span>kysec
+<span class="o">[</span><span class="w">    </span><span class="m">0</span>.005838<span class="o">]</span><span class="w"> </span>cma:<span class="w"> </span>Reserved<span class="w"> </span><span class="m">128</span><span class="w"> </span>MiB<span class="w"> </span>at<span class="w"> </span>0x0000000487800000
+<span class="o">[</span><span class="w">    </span><span class="m">0</span>.026542<span class="o">]</span><span class="w"> </span>Kernel<span class="w"> </span><span class="nb">command</span><span class="w"> </span>line:<span class="w"> </span><span class="nv">BOOT_IMAGE</span><span class="o">=</span>/vmlinuz-5.10.0-9-generic<span class="w"> </span><span class="nv">root</span><span class="o">=</span><span class="nv">UUID</span><span class="o">=</span>c7a8075e-85dc-4a73-84e8-9b5bc3029204<span class="w"> </span>ro<span class="w"> </span><span class="nv">cma</span><span class="o">=</span>128MB<span class="w"> </span>quiet<span class="w"> </span>splash<span class="w"> </span><span class="nv">loglevel</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="nv">resume</span><span class="o">=</span><span class="nv">UUID</span><span class="o">=</span>d27e8de7-dc17-47ab-92c6-5e7e34bca463<span class="w"> </span><span class="nv">security</span><span class="o">=</span>kysec
+<span class="o">[</span><span class="w">    </span><span class="m">0</span>.052526<span class="o">]</span><span class="w"> </span>Memory:<span class="w"> </span>15721272K/16458476K<span class="w"> </span>available<span class="w"> </span><span class="o">(</span>14345K<span class="w"> </span>kernel<span class="w"> </span>code,<span class="w"> </span>6114K<span class="w"> </span>rwdata,<span class="w"> </span>7480K<span class="w"> </span>rodata,<span class="w"> </span>3828K<span class="w"> </span>init,<span class="w"> </span>20636K<span class="w"> </span>bss,<span class="w"> </span>605872K<span class="w"> </span>reserved,<span class="w"> </span>131072K<span class="w"> </span>cma-reserved<span class="o">)</span>
+</pre></div>
+</div>
+<ol class="arabic" start="4">
+<li><p>如果CMA大小没有配置成合适size（推荐不小于128MB），按照如下步骤配置：</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">vim</span> <span class="pre">/etc/default/grub</span></code>，添加 <code class="docutils literal notranslate"><span class="pre">GRUB_CMDLINE_LINUX=&quot;cma=128MB&quot;</span></code>, size 根据自己业务和实际内存情况设置。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>sudo<span class="w"> </span>vim<span class="w"> </span>/etc/default/grub
+输入密码<span class="w">          </span>
+<span class="c1"># If you change this file, run &#39;update-grub&#39; afterwards to update</span>
+<span class="c1"># /boot/grub/grub.cfg.</span>
+<span class="c1"># For full documentation of the options in this file, see:</span>
+<span class="c1">#   info -f grub -n &#39;Simple configuration&#39;</span>
+
+<span class="nv">GRUB_DEFAULT</span><span class="o">=</span><span class="m">0</span>
+<span class="nv">GRUB_TIMEOUT</span><span class="o">=</span><span class="m">1</span>
+<span class="nv">GRUB_DISTRIBUTOR</span><span class="o">=</span><span class="sb">`</span>lsb_release<span class="w"> </span>-i<span class="w"> </span>-s<span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span>Debian<span class="sb">`</span>
+<span class="nv">GRUB_DISTRIBUTOR_RELEASE</span><span class="o">=</span><span class="sb">`</span>lsb_release<span class="w"> </span>-d<span class="w"> </span>-s<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-F<span class="s2">&quot; &quot;</span><span class="w"> </span><span class="s1">&#39;{print $2 &quot; &quot; $3}&#39;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="w"> </span>/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="sb">`</span>
+<span class="nv">GRUB_CMDLINE_LINUX_DEFAULT</span><span class="o">=</span><span class="s2">&quot;quiet splash loglevel=0&quot;</span>
+<span class="nv">GRUB_CMDLINE_LINUX</span><span class="o">=</span><span class="s2">&quot;cma=128MB&quot;</span>
+<span class="nv">GRUB_CMDLINE_LINUX_SECURITY</span><span class="o">=</span><span class="s2">&quot;security=kysec&quot;</span>
+
+<span class="c1"># Uncomment to enable BadRAM filtering, modify to suit your needs</span>
+<span class="c1"># This works with Linux (no patch required) and with any kernel that obtains</span>
+<span class="c1"># the memory map information from GRUB (GNU Mach, kernel of FreeBSD ...)</span>
+<span class="c1">#GRUB_BADRAM=&quot;0x01234567,0xfefefefe,0x89abcdef,0xefefefef&quot;</span>
+
+<span class="c1"># Uncomment to disable graphical terminal (grub-pc only)</span>
+<span class="c1">#GRUB_TERMINAL=console</span>
+
+<span class="c1"># The resolution used on graphical terminal</span>
+<span class="c1"># note that you can use only modes which your graphic card supports via VBE</span>
+<span class="c1"># you can see them in real GRUB with the command `vbeinfo&#39;</span>
+<span class="c1">#GRUB_GFXMODE=640x480</span>
+
+<span class="c1"># Uncomment if you don&#39;t want GRUB to pass &quot;root=UUID=xxx&quot; parameter to Linux</span>
+<span class="c1">#GRUB_DISABLE_LINUX_UUID=true</span>
+
+<span class="c1"># Uncomment to disable generation of recovery mode menu entries</span>
+<span class="c1">#GRUB_DISABLE_RECOVERY=&quot;true&quot;</span>
+
+<span class="c1"># Uncomment to get a beep at grub start</span>
+<span class="c1">#GRUB_INIT_TUNE=&quot;480 440 1&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">update-grub</span></code> 更新grub</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">reboot</span></code></p></li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul>
+<li><p>对于PCIe传输，kernel config中的CMA和DMA必须打开，若无法打开，请尝试订制内核或联络OS发行方的技术支持。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="m">1</span>.<span class="w"> </span>使用<span class="w"> </span>uname<span class="w"> </span>-r<span class="w"> </span>查看current<span class="w"> </span>kernel<span class="w"> </span>version
+<span class="m">2</span>.<span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>linux-source-<span class="k">$(</span>uname<span class="w"> </span>-r<span class="k">)</span><span class="w"> </span>to<span class="w"> </span>fetch<span class="w"> </span>the<span class="w"> </span>kernel<span class="w"> </span><span class="nb">source</span>
+<span class="m">3</span>.<span class="w"> </span>copy<span class="w"> </span>/boot/config-<span class="k">$(</span>uname<span class="w"> </span>-r<span class="k">)</span><span class="w"> </span>to<span class="w"> </span>/usr/src/linux-source-<span class="k">$(</span>uname<span class="w"> </span>-r<span class="k">)</span>/.config
+<span class="m">4</span>.<span class="w"> </span>edit<span class="w"> </span>.config
+<span class="w">   </span>Locate<span class="w"> </span>CONFIG_DMA_CMA<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span><span class="nb">set</span>
+<span class="w">   </span>change<span class="w"> </span>to<span class="w"> </span><span class="nv">CONFIG_DMA_CMA</span><span class="o">=</span>y
+<span class="m">5</span>.<span class="w"> </span>build<span class="w"> </span>kernel
+<span class="m">6</span>.<span class="w"> </span>make<span class="w"> </span>-j<span class="o">[</span><span class="m">2</span><span class="w"> </span>×<span class="w"> </span><span class="c1"># of cores]</span>
+<span class="m">7</span>.<span class="w"> </span>make<span class="w"> </span>-j<span class="o">[</span><span class="m">2</span><span class="w"> </span>×<span class="w"> </span><span class="c1"># of cores] modules_install</span>
+<span class="m">8</span>.<span class="w"> </span>make<span class="w"> </span>install
+
+You<span class="w"> </span>have<span class="w"> </span>rebuilt<span class="w"> </span>the<span class="w"> </span>kernel
+</pre></div>
+</div>
+</li>
+<li><p>环境搭建只需要配置一次，CMA size推荐不小于128MB。</p></li>
+</ul>
+</div>
+</section>
+<section id="deb">
+<h3><span class="section-number">5.4.3. </span>deb 安装<a class="headerlink" href="#deb" title="Link to this heading">#</a></h3>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">chmod</span> <span class="pre">+x</span></code> 给deb添加执行权限</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="w"> </span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>chmod<span class="w"> </span>+x<span class="w"> </span>axcl_host_V2.16.1_20241112130139_NO4433.deb
+</pre></div>
+</div>
+<ol class="arabic" start="2">
+<li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">dpkg</span> <span class="pre">-i</span></code>  安装deb，安装完之后自动加载子卡固件。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>sudo<span class="w"> </span>dpkg<span class="w"> </span>-i<span class="w"> </span>axcl_host_V2.16.1_20241112130139_NO4433.deb
+输入密码<span class="w">          </span>
+<span class="o">(</span>正在读取数据库<span class="w"> </span>...<span class="w"> </span>系统当前共安装有<span class="w"> </span><span class="m">202167</span><span class="w"> </span>个文件和目录。<span class="o">)</span>
+准备解压<span class="w"> </span>axcl_host_V2.16.1_20241112130139_NO4433.deb<span class="w">  </span>...
+正在解压<span class="w"> </span>axclhost<span class="w"> </span><span class="o">(</span><span class="m">1</span>.0<span class="o">)</span><span class="w"> </span>并覆盖<span class="w"> </span><span class="o">(</span><span class="m">1</span>.0<span class="o">)</span><span class="w"> </span>...
+正在设置<span class="w"> </span>axclhost<span class="w"> </span><span class="o">(</span><span class="m">1</span>.0<span class="o">)</span><span class="w"> </span>...
+Need<span class="w"> </span>manual<span class="w"> </span>execute:<span class="w"> </span><span class="nb">source</span><span class="w"> </span>/etc/profile
+正在处理用于<span class="w"> </span>libc-bin<span class="w"> </span><span class="o">(</span><span class="m">2</span>.31-0kylin9.2k0.2<span class="o">)</span><span class="w"> </span>的触发器<span class="w"> </span>...
+</pre></div>
+</div>
+</li>
+<li><p>执行<code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">/etc/profile</span></code>更新环境变量</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span><span class="nb">source</span><span class="w"> </span>/etc/profile
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h3><span class="section-number">5.4.4. </span>deb 卸载<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">[</span>axera@localhost<span class="w"> </span>~<span class="o">]</span>$<span class="w"> </span>sudo<span class="w"> </span>dpkg<span class="w"> </span>-r<span class="w"> </span>axclhost<span class="w"> </span>
+<span class="o">(</span>正在读取数据库<span class="w"> </span>...<span class="w"> </span>系统当前共安装有<span class="w"> </span><span class="m">198866</span><span class="w"> </span>个文件和目录。<span class="o">)</span>
+正在卸载<span class="w"> </span>axclhost<span class="w"> </span><span class="o">(</span><span class="m">1</span>.0<span class="o">)</span><span class="w"> </span>...
+正在处理用于<span class="w"> </span>libc-bin<span class="w"> </span><span class="o">(</span><span class="m">2</span>.31-0kylin9.2k0.2<span class="o">)</span><span class="w"> </span>的触发器<span class="w"> </span>...
+</pre></div>
+</div>
+</section>
+</section>
+<section id="ubuntu">
+<h2><span class="section-number">5.5. </span>ubuntu<a class="headerlink" href="#ubuntu" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>系统配置和deb安装、卸载参考 <a class="reference internal" href="#kylin"><span class="xref myst">Kylin</span></a>。</p></li>
+<li><p>系统版本支持22.04（含）以上版本。</p></li>
+</ul>
+</section>
+<section id="others">
+<h2><span class="section-number">5.6. </span>Others<a class="headerlink" href="#others" title="Link to this heading">#</a></h2>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="doc_guide_axcl_api.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><span class="section-number">4. </span>AXCL API</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="doc_guide_quick_start.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><span class="section-number">6. </span>AXCL 快速上手</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#raspberry-pi-5">5.1. Raspberry Pi 5</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">5.1.1. 准备工作</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">5.1.2. 生成或获取安装包</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">5.1.3. 安装安装包</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">5.1.4. 启动子卡</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">5.1.5. 卸载安装</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rk3588">5.2. RK3588 等开发板</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#centos-9">5.3. CentOS 9</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">5.3.1. 系统信息</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">5.3.2. 环境搭建</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rpm">5.3.3. rpm 安装</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id8">5.3.4. rpm 卸载</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kylin-10">5.4. <span class="xref myst">Kylin 10</span></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id9">5.4.1. 系统信息</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">5.4.2. 环境搭建</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#deb">5.4.3. deb 安装</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id11">5.4.4. deb 卸载</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ubuntu">5.5. ubuntu</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#others">5.6. Others</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By kalcohol
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, AXERA Semiconductor Co., Ltd..
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=26a4bc78f4c0ddb94549"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=26a4bc78f4c0ddb94549"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

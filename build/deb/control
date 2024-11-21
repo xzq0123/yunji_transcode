@@ -1,0 +1,10 @@
+Package: axclhost
+Version: 1.0
+Section: misc
+Priority: optional
+Architecture: amd64
+Depends: gcc (>= 9.4.0)
+Build-Depends: gcc, make, linux-headers-$(uname -r)
+Maintainer: xiaoqiang <xiaoqiang@axera-tech.com>
+Description: axcl host project installation package
+ This package contains PCIe driver, bin, lib, etc.

@@ -1,0 +1,14 @@
+prefix=/home/jingxiaoping/ffmpeg-mp4/out
+exec_prefix=${prefix}
+libdir=/home/jingxiaoping/ffmpeg-mp4/out/lib
+includedir=/home/jingxiaoping/ffmpeg-mp4/out/include
+
+Name: libavformat
+Description: FFmpeg container format library
+Version: 58.51.100
+Requires: 
+Requires.private: libavcodec >= 58.101.100, libswresample >= 3.8.100, libavutil >= 56.58.100
+Conflicts:
+Libs: -L${libdir}  -lavformat 
+Libs.private: -lm -lz
+Cflags: -I${includedir}

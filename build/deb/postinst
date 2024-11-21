@@ -1,0 +1,42 @@
+#!/bin/sh
+set -e
+home=$(pwd)/..
+axcl=${home}/usr/src/axcl/drv/pcie/driver/
+ko=${home}/usr/src/axcl/out/axcl_linux_x86/ko
+image=${home}/usr/src/axcl/image
+modules=/lib/modules/$(uname -r)/extra
+
+# Compile driver
+cd ${axcl}
+make host=x86 clean all install -j8 >/dev/null 2>&1
+
+# install driver
+mkdir -p ${modules}
+cp -rf ${ko}/ax_pcie_host_dev.ko ${modules}
+cp -rf ${ko}/ax_pcie_msg.ko ${modules}
+cp -rf ${ko}/ax_pcie_mmb.ko ${modules}
+cp -rf ${ko}/axcl_host.ko ${modules}
+
+# install image
+mkdir -p /lib/firmware/axcl
+cp -rf ${image}/ax650_card.pac /lib/firmware/axcl/
+
+# update modules
+depmod -a
+
+# update so config
+ldconfig
+
+# insmod ko
+modprobe ax_pcie_host_dev
+modprobe ax_pcie_msg
+modprobe ax_pcie_mmb
+modprobe axcl_host
+set +e
+
+AXCL_BIN_PATH=$(echo $PATH | grep -c '/usr/bin/axcl')
+if [ $AXCL_BIN_PATH -eq 0 ]; then
+    echo "\e[1;31mNeed manual execute: source /etc/profile\e[0m"
+fi
+
+exit 0

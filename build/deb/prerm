@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+# rmmod ko
+modprobe -r axcl_host
+modprobe -r ax_pcie_mmb
+modprobe -r ax_pcie_msg
+modprobe -r ax_pcie_host_dev
+
+# delete driver
+rm -rf  /lib/modules/$(uname -r)/kernel/drivers/pci/ax_pcie*
+rm -rf  /lib/modules/$(uname -r)/kernel/drivers/pci/axcl*
+
+# uninstall image
+rm -rf /lib/firmware/axcl
+
+rm -rf /usr/src/axcl/build/out
+rm -rf /usr/src/axcl/out
+
+# update modules
+depmod -a
+
+exit 0
