@@ -1,32 +1,37 @@
-# 1. AXCL 简介
+# 算力卡快速入门指南
 
-AXCL是用于在AX芯片平台上开发深度神经网络推理、转码等应用API库，提供运行资源管理，内存管理，模型加载和执行，媒体数据处理等API。
 
-# 2. AXCL 硬件信息
 
-芯茧® 人工智能算力卡是 **深圳市云集互联生态科技有限公司** 推出的基于 **AX650N** 芯片的 M.2 2280 计算卡。
+## 产品简介
 
-|              | 描述                                                    |
-| ------------ | ------------------------------------------------------- |
-| SoC          | AX650N                                                  |
-| 处理器       | Octa-corre Cortex-A55@1.7GHz                            |
-| 内存         | 8GiB，64bit LPDDR4x                                     |
-| 存储         | 16MiB，Nor Flash                                        |
-| NPU          | 18TOPs@Int8，72TOPs@Int4                                |
-|              | 支持 CNN、Transformer 模型部署，支持 LLM、VLM 部署      |
-| 视频编码     | H.264/H.265，16路 1080@30fps 编码                       |
-| 视频解码     | H.264/H.265，32路 1080@30fps 解码                       |
-| Host 适配    | 支持 Intel、AMD、NXP、Xilinx、Raspberry Pi、Rockchip 等 |
-| Host 系统    | Ubuntu、Debian、CentOS                                  |
+芯茧® 人工智能算力卡是 **深圳市云集互联生态科技有限公司** 推出的基于 **AX650N** 芯片的 M.2 2280 计算卡。 
+芯茧算力卡在售有两款，4G/8G内存版本，以下表格展示为8G内存的算力卡。
+
+|     产品规格         | 描述                             |
+| ------------ | -------------------------------------------------|
+| 处理器       | Octa-corre Cortex-A55@1.7GHz    |
+| 内存         | 8GB，64bit LPDDR4x                 |
+| 存储         | 16MB              |
+| 峰值算力  | 18TOPS@INT8 |
+| 视频编码     | H.264/H.265，16路 1080P@30fps 编码                     |
+| 视频解码     | H.264/H.265，32路 1080P@30fps 解码                      |
+| PCIE | PCIE GEN2 X4 |
+| 主控CPU支持 | 支持 Intel、AMD、NXP、Xilinx、Raspberry Pi、Rockchip 等 |
+| Host 系统    | Ubuntu、Debian、CentOS、麒麟             |
 | 外形尺寸     | M.2 2280，M Key                                         |
 | 工作电压     | 3.3 V                                                   |
 | 整体系统功耗 | ＜8 w                                                   |
+| 算法适配 | 支持图像分类，目标检测，自然语言处理，语音网络以及常规大模型 |
 
-# 3. AXCL 运行环境搭建
 
-## 3.1. CentOS 9
 
-### 3.1.1 系统信息
+##  AXCL 环境搭建
+
+
+
+### CentOS 9系统适配
+
+#### 系统信息
 
 ```bash
 [test@centos ~]$ uname -a
@@ -49,7 +54,7 @@ REDHAT_SUPPORT_PRODUCT_VERSION="CentOS Stream"
 [test@centos ~]$
 ```
 
-### 3.1.2 环境搭建
+#### 环境搭建
 
 1. 更新软件包：`sudo yum update`
 
@@ -69,7 +74,7 @@ REDHAT_SUPPORT_PRODUCT_VERSION="CentOS Stream"
    GRUB_ENABLE_BLSCFG=true
    [test@centos ~]$
    ```
-   
+
 4. 更新 grub：
 
    ```bash
@@ -137,9 +142,9 @@ REDHAT_SUPPORT_PRODUCT_VERSION="CentOS Stream"
    [test@centos ~]$
    ```
 
-## 3.2. Ubuntu 22.04
+###  Ubuntu 22.04
 
-### 3.2.1 系统信息
+#### 系统信息
 
 ```bash
 test@ubuntu:~$ cat /etc/os-release 
@@ -158,7 +163,7 @@ UBUNTU_CODENAME=jammy
 test@ubuntu:~$ 
 ```
 
-### 3.2.2 环境搭建
+#### 3.2.2 环境搭建
 
 >Ubuntu 22.04 默认没有打开 `CONFIG_CMA=y`  和 `CONFIG_DMA_CMA=y`，所以需要重建内核。
 >
@@ -241,10 +246,14 @@ test@ubuntu:~$
     [    0.198353] Memory: 31551428K/33116588K available (20480K kernel code, 4267K rwdata, 7276K rodata, 4772K init, 17416K bss, 1302756K reserved, 262144K cma-reserved)
     test@ubuntu:~$ 
     ```
+### Other
+暂时列举centos9和ubuntu22.04, 其他host系统以及各种版本后续加入进来。
 
-# 4. AXCL 驱动
+## AXCL 驱动安装
 
-## 4.1. 驱动编译
+暂时使用axcl手动编译，后续会使用针对ubuntu，centos等提供deb和rpm包直接安装驱动。
+
+### 驱动编译
 
 1. 解压源码包：`tar zxvf axcl.tar.gz`
 2. 进入 axcl 源码目录：`cd axcl`
@@ -258,7 +267,7 @@ axcl_host.ko  ax_pcie_host_dev.ko  ax_pcie_mmb.ko  ax_pcie_msg.ko  ax_pcie_net_h
 <axcl> $
 ```
 
-## 4.2. 驱动加载
+### 驱动加载
 
 1. 安装算力卡固件：
 
@@ -279,7 +288,7 @@ axcl_host.ko  ax_pcie_host_dev.ko  ax_pcie_mmb.ko  ax_pcie_msg.ko  ax_pcie_net_h
    sudo chmod 666 /dev/axcl_host
    ```
 
-# 5. AXCL 源码编译
+## AXCL 源码编译
 
 ```bash
 cd <axcl>/build
@@ -293,7 +302,7 @@ cd <axcl>
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/out/axcl_linux_x86/lib/:$PWD/out/axcl_linux_x86/lib/ffmpeg/
 ```
 
-# 6. AXCL 快速上手
+## AXCL 快速上手
 
 本节使用的demo可在 `<axcl>/out/axcl_linux_x86/bin`目录找到。
 
@@ -411,9 +420,9 @@ options:
 [INFO ][                            main][ 241]: ============== V2.16.0 sample exited Nov  7 2024 16:40:05 pid 1623 ==============
 ```
 
-# 7. AXCL FAQ
+## AXCL FAQ
 
-## 1. 抓取设备侧日志
+### 1. 抓取设备侧日志
 
 **axcl_smi** 工具支持将设备侧的日志（内核和SDK的syslog，运行时库日志）抓取到Host本地，使用方法如下：
 
@@ -444,5 +453,3 @@ file sink initialization failed: Failed opening file /tmp/axcl/axcl_logs.txt for
 [test@centos bin]$
 ```
 
-## 算力卡使用指南
-旧版本的固件download模式，已经移到download_axdl目录下，若需参考旧兼容版本，请查看download_axdl目录下的README
