@@ -36,6 +36,22 @@ axclError axclFinalize();
 */
 axclError axclSetLogLevel(int32_t lv);
 
+/**
+ * @brief Records an application log with below format:
+ *        [date time][tid][level][APP][function][file][line]: formatted message
+ *        Example:
+ *          axclAppLog(5, __func__, NULL, __LINE__, "json: %s, device: %d", json, device);
+ *          log:
+ *          [2024-11-12 14:24:22.380][1330][C][APP][main][53]: json: ./axcl.json, device: 129
+ *
+ * @param lv log level, see axclSetLogLevel for reference
+ * @param func function name; if set to NULL, the function name will not be printed
+ * @param file file name; if set to NULL, the file name will not be printed
+ * @param line line number
+ * @param fmt format string for the log message, max. length is 1024.
+ */
+void axclAppLog(int32_t lv, const char *func, const char *file, uint32_t line, const char *fmt, ...);
+
 #ifdef __cplusplus
 }
 #endif

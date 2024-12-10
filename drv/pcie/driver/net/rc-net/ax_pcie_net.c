@@ -181,7 +181,9 @@ static int axnet_pcie_host_irq_to_slave(struct axnet_priv *axnet)
 	unsigned int infor_data, data_reg, regno;
 	static volatile int mailbox_fromid = CPU0_MASTERID;
 	unsigned long flags;
+#ifndef IS_THIRD_PARTY_PLATFORM
 	unsigned long dbi_flags = 0;
+#endif
 	struct irq_md *irq;
 	u64 irq_cnt = 0x1;
 

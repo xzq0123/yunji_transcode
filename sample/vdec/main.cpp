@@ -210,17 +210,21 @@ int main(int argc, char *argv[]) {
 
     /* step09: stop vdec and demuxer */
     for (int32_t i = 0; i < count; ++i) {
-        SAMPLE_LOG_I("stop demuxer %d", i);
-        ffmpeg_stop_demuxer(demuxers[i]);
-
-        decode_threads[i].stop();
-        decode_threads[i].join();
-
+        /**
+         * bugfix:
+         * Stop vdec first; otherwise `sample_vdec_send_stream(-1)` may hang.
+        */
         if (!eofs[i]) {
             const AX_VDEC_GRP grp = static_cast<AX_VDEC_GRP>(i);
             SAMPLE_LOG_I("stop decoder %d", grp);
             sample_vdec_stop(grp);
         }
+
+        SAMPLE_LOG_I("stop demuxer %d", i);
+        ffmpeg_stop_demuxer(demuxers[i]);
+
+        decode_threads[i].stop();
+        decode_threads[i].join();
     }
 
     /* step10: deinit vdec module */
@@ -401,6 +405,7 @@ static void on_receive_demux_stream_data(const struct stream_data *data, uint64_
     if (0 == data->video.size) {
         stream.bEndOfStream = AX_TRUE;
     }
+
     AX_S32 ret = sample_vdec_send_stream(grp, &stream, -1);
     if (0 != ret && !g_exit) {
         SAMPLE_LOG_E("[decoder %2d] send stream (id: %ld, size: %u) fail, ret = 0x%x", grp, data->video.seq_num, data->video.size, ret);

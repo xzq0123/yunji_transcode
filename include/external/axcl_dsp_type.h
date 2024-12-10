@@ -8,24 +8,13 @@
  *
  **************************************************************************************************/
 
-#ifndef __AXCL_NATIVE_API_H__
-#define __AXCL_NATIVE_API_H__
+#ifndef __AXCL_DSP_TYPE_H__
+#define __AXCL_DSP_TYPE_H__
 
-#include "axcl_npu.h"
-#include "axcl_dmadim.h"
-#include "axcl_ive.h"
-#include "axcl_ivps.h"
-#include "axcl_sys.h"
-#include "axcl_vdec.h"
-#include "axcl_venc.h"
-#include "axcl_dsp.h"
+#include "axcl_base.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#pragma pack(push, 8)
+#include "ax_dsp_api.h"
+#pragma pack(pop)
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __AXCL_NATIVE_API_H__ */
+#endif /* __AXCL_DSP_TYPE_H__ */

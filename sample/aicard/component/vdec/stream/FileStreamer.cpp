@@ -13,6 +13,7 @@
 #include <chrono>
 #include <random>
 #include <thread>
+#include "elapser.hpp"
 #include "AppLogApi.h"
 #include "ax_sys_api.h"
 
@@ -21,14 +22,62 @@
 
 #define DEMUX "DEMUX"
 
+AX_VOID CFileStreamer::DispatchThread(AX_VOID* pArg) {
+    axclrtContext context;
+    if (axclError ret = axclrtCreateContext(&context, m_nDevID); AXCL_SUCC != ret) {
+        return;
+    }
+
+    const AX_S32 nCookie = m_stInfo.nCookie;
+    int32_t ret;
+    while (m_DispatchThread.IsRunning() || m_fifo->size() > 0) {
+        nalu_data nalu;
+        uint32_t total_len = 0;
+
+        if (ret = m_fifo->peek(nalu, total_len, -1); 0 != ret) {
+            if (-EINTR != ret) {
+                LOG_M_E(DEMUX, "[%d] peek from fifo fail, ret = %d", nCookie, ret);
+            }
+            break;
+        }
+
+        AX_U8 *data = nullptr;
+        AX_U32 size = nalu.len;
+        AX_U64 nPTS = nalu.pts;
+        if (nalu.len2 > 0) {
+            size += nalu.len2;
+            data = reinterpret_cast<uint8_t *>(malloc(size));
+            memcpy(data, nalu.nalu, nalu.len);
+            memcpy(data + nalu.len, nalu.nalu2, nalu.len2);
+        } else {
+            data = nalu.nalu;
+        }
+
+        for (auto&& m : m_lstObs) {
+            if (!m->OnRecvVideoData(nCookie, data, size, nPTS) && m_bSyncObs) {
+                break;
+            }
+        }
+
+        /* pop from fifo */
+        m_fifo->skip(total_len);
+
+        if (nalu.len2 > 0) {
+            free(data);
+        }
+    }
+
+    /* destory axcl runtime context */
+    axclrtDestroyContext(context);
+}
+
 AX_VOID CFileStreamer::DemuxThread(AX_VOID* pArg) {
     AX_S32 ret;
     const AX_S32 nCookie = m_stInfo.nCookie;
     AX_U64 nPTS;
+    AX_U64 nNow = 0;
+    AX_U64 nLast = 0;
     AX_U32 nPTSIntv = 1000000 / ((m_nForceFps > 0) ? m_nForceFps : m_stInfo.nFps);
-
-    std::default_random_engine e(time(0));
-    std::uniform_int_distribution<unsigned> u(0, m_nMaxSendNaluIntervalMilliseconds);
 
     axclrtContext context;
     if (axclError ret = axclrtCreateContext(&context, m_nDevID); AXCL_SUCC != ret) {
@@ -93,22 +142,35 @@ AX_VOID CFileStreamer::DemuxThread(AX_VOID* pArg) {
                         nPTS += nPTSIntv;
                     }
 
-                    // LOG_M_C(DEMUX, "pts = %lld", nPTS);
-                    // if (m_nFrmDelay > 0) {
-                    //     std::this_thread::sleep_for(std::chrono::microseconds(m_nFrmDelay));
-                    // }
+                    nalu_data nalu = {};
+                    nalu.userdata = nCookie;
+                    nalu.pts = nPTS;
+                    nalu.nalu = m_pAvPkt->data;
+                    nalu.len = m_pAvPkt->size;
 
-                    for (auto&& m : m_lstObs) {
-                        if (!m->OnRecvVideoData(nCookie, m_pAvPkt->data, m_pAvPkt->size, nPTS) && m_bSyncObs) {
-                            break;
+                    if (m_bFrameRateControl) {
+                        nNow = axcl::elapser::ticks();
+                        if (m_stStat.nCount <= 1) {
+                            nLast = nNow;
+                        } else {
+                            AX_U64 diff = nNow - nLast;
+                            if (diff < nPTSIntv) {
+                                AX_U64 delay = nPTSIntv - diff;
+                                delay -= (delay % 1000); /* truncated to ms */
+                                axcl::elapser::ax_usleep(delay);
+                                LOG_M_I(DEMUX, "[%d] frame %ld: now %lld, last %lld, delay %lld", nCookie, m_stStat.nCount, nNow, nLast, delay);
+                            } else {
+                                LOG_M_W(DEMUX, "[%d] frame %ld: now %lld, last %lld, delay %lld ==> execced fps interval %d, fifo_size: %d", nCookie,
+                                             m_stStat.nCount, nNow, nLast, diff - nPTSIntv, nPTSIntv, m_fifo->size());
+                            }
+
+                            nLast = axcl::elapser::ticks();
                         }
                     }
 
-                    if (m_nMaxSendNaluIntervalMilliseconds > 0) {
-                        AX_U32 ms = u(e);
-                        if (ms > 10) {
-                        //  LOG_M_C(DEMUX, "sleep for %d ms", ms);
-                            std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+                    if (ret = m_fifo->push(nalu, -1); 0 != ret) {
+                        if (-EINTR != ret) {
+                            LOG_M_E(DEMUX, "[%d] push frame %ld len %d to fifo fail, ret = %d", nCookie, m_stStat.nCount, nalu.len, ret);
                         }
                     }
                 }
@@ -130,6 +192,7 @@ AX_BOOL CFileStreamer::Init(const STREAMER_ATTR_T& stAttr) {
     m_nForceFps = stAttr.nForceFps;
     m_nFrmDelay = stAttr.nFrmDelay;
     m_nMaxSendNaluIntervalMilliseconds = stAttr.nMaxSendNaluIntervalMilliseconds;
+    m_bFrameRateControl = AX_TRUE;
 
     // #ifdef __SLT__
     //     m_bLoop = AX_FALSE;
@@ -199,6 +262,8 @@ AX_BOOL CFileStreamer::Init(const STREAMER_ATTR_T& stAttr) {
 
         m_stInfo.nWidth = pAvs->codecpar->width;
         m_stInfo.nHeight = pAvs->codecpar->height;
+
+        m_fifo = new nalu_lock_fifo(pAvs->codecpar->width * pAvs->codecpar->height * 2);
 
         if (pAvs->avg_frame_rate.den == 0 || (pAvs->avg_frame_rate.num == 0 && pAvs->avg_frame_rate.den == 1)) {
             m_stInfo.nFps = (AX_U32)(round(av_q2d(pAvs->r_frame_rate)));
@@ -289,6 +354,11 @@ AX_BOOL CFileStreamer::DeInit(AX_VOID) {
         m_pAvFmtCtx = nullptr;
     }
 
+    if (m_fifo) {
+        delete m_fifo;
+        m_fifo = nullptr;
+    }
+
     LOG_M_D(DEMUX, "%s: stream %d ---", __func__, m_stInfo.nCookie);
     return AX_TRUE;
 }
@@ -303,6 +373,12 @@ AX_BOOL CFileStreamer::Start(AX_VOID) {
         return AX_FALSE;
     }
 
+    sprintf(szName, "AppDisp%d", m_stInfo.nCookie);
+    if (!m_DispatchThread.Start([this](AX_VOID* pArg) -> AX_VOID { DispatchThread(pArg); }, nullptr, szName)) {
+        LOG_M_E(DEMUX, "%s: create demux thread of stream %d fail", __func__, m_stInfo.nCookie);
+        return AX_FALSE;
+    }
+
     UpdateStatus(AX_TRUE);
     LOG_M_D(DEMUX, "%s: stream %d ---", __func__, m_stInfo.nCookie);
     return AX_TRUE;
@@ -313,6 +389,12 @@ AX_BOOL CFileStreamer::Stop(AX_VOID) {
 
     m_DemuxThread.Stop();
     m_DemuxThread.Join();
+
+    m_DispatchThread.Stop();
+    if (m_fifo) {
+        m_fifo->wakeup();
+    }
+    m_DispatchThread.Join();
 
     // LOG_M_I(DEMUX, "stream %d has sent total %lld frames", m_stInfo.nCookie, m_stStat.nCount);
     return AX_TRUE;

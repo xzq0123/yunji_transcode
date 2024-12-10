@@ -191,6 +191,9 @@ struct pci_bar_info {
 struct axera_dev {
 	unsigned int slot_index;
 	unsigned int controller;
+	int domain;
+	unsigned int dev_slot;
+	unsigned int dev_func;
 
 	struct ax_pcie_controller pcie_controller;
 
@@ -214,6 +217,9 @@ struct axera_dev {
 #ifdef SHMEM_FROM_MASTER
 	u64 ob_base;
 	u64 ob_size;
+	dma_addr_t org_phys_addr;
+	void *org_addr;
+	size_t org_size;
 	void *ob_base_virt;
 	void *ob_end_virt;
 #endif

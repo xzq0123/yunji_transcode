@@ -14,6 +14,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <exception>
+#include <iostream>
+#include <ostream>
 #include <string>
 #include <vector>
 #include "axcl_rt.h"
@@ -25,6 +27,7 @@
 extern "C" {
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
+#include "libavutil/time.h"
 }
 
 #define AVERRMSG(err, msg)                  \
@@ -87,19 +90,27 @@ int is_empty(PacketQueue packet_list) {
 
 struct ffmpeg_context {
     std::string url;
-    std::string out;
+    AVFormatContext *avfmt_in_ctx = nullptr;
+
+    std::string mp4_file;
+    AVFormatContext *avfmt_mp4_ctx = nullptr;
+
+    std::string rtmp_url;
+    AVFormatContext *avfmt_rtmp_ctx = nullptr;
+
+    axcl::threadx demux_thread;
+    axcl::threadx dispatch_thread;
+    axcl::threadx sync_thread;
+    axcl::threadx rtmp_thread;
+
+    int32_t video_track_id = -1;
+    int32_t audio_track_id = -1;
+
     AVCodecID encodec = AV_CODEC_ID_NONE;
     int32_t cookie = -1;
     int32_t device = -1;
     struct stream_info info;
-    axcl::threadx demux_thread;
-    axcl::threadx dispatch_thread;
-    axcl::threadx sync_thread;
-    AVFormatContext *avfmt_ctx = nullptr;
-    AVFormatContext *avout_mp4_ctx = nullptr;
     AVBSFContext *avbsf_ctx = nullptr;
-    int32_t video_track_id = -1;
-    int32_t audio_track_id = -1;
     AVStream *src_video = NULL;
     AVStream *src_audio = NULL;
     AVStream *dest_video = NULL;
@@ -112,6 +123,7 @@ struct ffmpeg_context {
 
     /* dispatch fifo */
     nalu_lock_fifo *fifo = nullptr;
+    nalu_lock_fifo *fifo_v = nullptr;
 
     PacketQueue packet_audio_list;
     PacketQueue packet_video_list;
@@ -134,9 +146,12 @@ struct ffmpeg_context {
 
 static int ffmpeg_init_demuxer(ffmpeg_context *context);
 static int ffmpeg_deinit_demuxer(ffmpeg_context *context);
+
 static void ffmpeg_demux_thread(ffmpeg_context *context);
+
 static void ffmpeg_dispatch_thread(ffmpeg_context *context);
 static void ffmpeg_sync_thread(ffmpeg_context *context);
+static void ffmpeg_rtmp_thread(ffmpeg_context *context);
 
 int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, int32_t encodec, int32_t device, stream_sink sink, uint64_t userdata) {
     if (!url || device <= 0 || !demuxer) {
@@ -151,7 +166,8 @@ int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, int32_t enco
     }
 
     context->url = url;
-    context->out = "output.mp4";
+    context->mp4_file = "output.mp4";
+    context->rtmp_url = "rtmp://192.168.0.134:1935/live/test";
 
     switch (encodec) {
         case PT_H264:
@@ -190,6 +206,10 @@ int ffmpeg_destory_demuxer(ffmpeg_demuxer demuxer) {
         delete context->fifo;
     }
 
+    if (context->fifo_v) {
+        delete context->fifo_v;
+    }
+
     delete context;
     return 0;
 }
@@ -217,18 +237,32 @@ int ffmpeg_push_video_packet(ffmpeg_demuxer demuxer, AVPacket packet) {
     return 0;
 }
 
+int ffmpeg_push_video_nalu(ffmpeg_demuxer demuxer, nalu_data *nalu) {
+    int ret = 0;
+    ffmpeg_context *context = reinterpret_cast<ffmpeg_context *>(demuxer);
+    if (!context) {
+        SAMPLE_LOG_E("invalid context handle");
+        return -1;
+    }
+
+    if (ret = context->fifo_v->push(*nalu, -1); 0 != ret) {
+        SAMPLE_LOG_E("[%d] push frame len %d to fifo fail, ret = %d", context->cookie, nalu->len, ret);
+    }
+
+    return 0;
+}
+
 int ffmpeg_start_demuxer(ffmpeg_demuxer demuxer) {
     ffmpeg_context *context = FFMPEG_CONTEXT(demuxer);
     char name[16];
     sprintf(name, "dispatch%d", context->cookie);
     context->dispatch_thread.start(name, ffmpeg_dispatch_thread, context);
 
-    sprintf(name, "sync%d", context->cookie);
-    context->sync_thread.start(name, ffmpeg_sync_thread, context);
-
     sprintf(name, "demux%d", context->cookie);
     context->demux_thread.start(name, ffmpeg_demux_thread, context);
-    context->demux_thread.detach();
+
+    sprintf(name, "rtmp%d", context->cookie);
+    context->sync_thread.start(name, ffmpeg_rtmp_thread, context);
     return 0;
 }
 
@@ -239,10 +273,14 @@ static inline void ffmpeg_stop_dispatch(ffmpeg_context *context) {
 int ffmpeg_stop_demuxer(ffmpeg_demuxer demuxer) {
     ffmpeg_context *context = FFMPEG_CONTEXT(demuxer);
     context->demux_thread.stop();
-    ffmpeg_stop_dispatch(context);
+    context->demux_thread.join();
+
+    context->dispatch_thread.stop();
     context->dispatch_thread.join();
+
     context->sync_thread.stop();
     context->sync_thread.join();
+
     return 0;
 }
 
@@ -265,12 +303,12 @@ int ffmpeg_set_demuxer_sink(ffmpeg_demuxer demuxer, stream_sink sink, uint64_t u
 static void ffmpeg_sync_thread(ffmpeg_context *context) {
     SAMPLE_LOG_I("[%d] +++", context->cookie);
 
-    if (avio_open(&context->avout_mp4_ctx->pb, context->out.c_str(), AVIO_FLAG_WRITE) < 0) {
-        SAMPLE_LOG_E("Could not open '%s'\n", context->out.c_str());
+    if (avio_open(&context->avfmt_mp4_ctx->pb, context->mp4_file.c_str(), AVIO_FLAG_WRITE) < 0) {
+        SAMPLE_LOG_E("Could not open '%s'\n", context->mp4_file.c_str());
         return;
     }
 
-    if (avformat_write_header(context->avout_mp4_ctx, NULL) < 0) {
+    if (avformat_write_header(context->avfmt_mp4_ctx, NULL) < 0) {
         SAMPLE_LOG_E("Could not write header\n");
         return;
     }
@@ -297,7 +335,7 @@ static void ffmpeg_sync_thread(ffmpeg_context *context) {
 
             // 变基
             av_packet_rescale_ts(&video_packet, context->src_video->time_base, context->dest_video->time_base);
-            ret = av_write_frame(context->avout_mp4_ctx, &video_packet);
+            ret = av_write_frame(context->avfmt_mp4_ctx, &video_packet);
             if (ret < 0) {
                 SAMPLE_LOG_E("write frame occur error %d.\n", ret);
                 break;
@@ -319,7 +357,7 @@ static void ffmpeg_sync_thread(ffmpeg_context *context) {
 
             // 变基
             av_packet_rescale_ts(&audio_packet, context->src_audio->time_base, context->dest_audio->time_base);
-            ret = av_write_frame(context->avout_mp4_ctx, &audio_packet);
+            ret = av_write_frame(context->avfmt_mp4_ctx, &audio_packet);
             if (ret < 0) {
                 SAMPLE_LOG_E("write frame occur error %d.\n", ret);
                 break;
@@ -330,7 +368,7 @@ static void ffmpeg_sync_thread(ffmpeg_context *context) {
         }
     }
 
-    av_write_trailer(context->avout_mp4_ctx);
+    av_write_trailer(context->avfmt_mp4_ctx);
 }
 
 static void ffmpeg_dispatch_thread(ffmpeg_context *context) {
@@ -357,7 +395,9 @@ static void ffmpeg_dispatch_thread(ffmpeg_context *context) {
 
         // SAMPLE_LOG_I("peek size %d frame %ld +++", context->fifo->size(), count);
         if (ret = context->fifo->peek(nalu, total_len, -1); 0 != ret) {
-            SAMPLE_LOG_E("[%d] peek from fifo fail, ret = %d", context->cookie, ret);
+            if (-EINTR != ret) {
+                SAMPLE_LOG_E("[%d] peek from fifo fail, ret = %d", context->cookie, ret);
+            }
             break;
         }
         // SAMPLE_LOG_I("peek size %d frame %ld ---", context->fifo->size(), count);
@@ -419,11 +459,11 @@ static int32_t ffmpeg_seek_to_begin(ffmpeg_context *context) {
      * AVSEEK_FLAG_BACKWARD may fail (example: zhuheqiao.mp4), use AVSEEK_FLAG_ANY, but not guarantee seek to I frame
      */
     av_bsf_flush(context->avbsf_ctx);
-    int32_t ret = av_seek_frame(context->avfmt_ctx, context->video_track_id, 0, AVSEEK_FLAG_ANY /* AVSEEK_FLAG_BACKWARD */);
+    int32_t ret = av_seek_frame(context->avfmt_in_ctx, context->video_track_id, 0, AVSEEK_FLAG_ANY /* AVSEEK_FLAG_BACKWARD */);
     if (ret < 0) {
         char msg[64];
         SAMPLE_LOG_W("[%d] seek to begin fail, %s, retry once ...", context->cookie, AVERRMSG(ret, msg));
-        ret = avformat_seek_file(context->avfmt_ctx, context->video_track_id, INT64_MIN, 0, INT64_MAX, AVSEEK_FLAG_BYTE);
+        ret = avformat_seek_file(context->avfmt_in_ctx, context->video_track_id, INT64_MIN, 0, INT64_MAX, AVSEEK_FLAG_BYTE);
         if (ret < 0) {
             SAMPLE_LOG_E("[%d] seek to begin fail, %s", context->cookie, AVERRMSG(ret, msg));
             return ret;
@@ -456,7 +496,7 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
 
     context->eof.reset();
     while (context->demux_thread.running()) {
-        ret = av_read_frame(context->avfmt_ctx, avpkt);
+        ret = av_read_frame(context->avfmt_in_ctx, avpkt);
         if (ret < 0) {
             if (AVERROR_EOF == ret) {
                 if (context->loop) {
@@ -467,18 +507,19 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                     continue;
                 }
 
-                /* stop dispatch at first to avoid blocking in fifo peek */
-                ffmpeg_stop_dispatch(context);
-
                 SAMPLE_LOG_I("[%d] reach eof", context->cookie);
                 if (context->sink.on_stream_data) {
                     /* send eof */
                     nalu_data nalu = {};
                     nalu.userdata = context->userdata;
                     if (ret = context->fifo->push(nalu, -1); 0 != ret) {
-                        SAMPLE_LOG_E("[%d] push eof to fifo fail, ret = %d", context->cookie, ret);
+                        if (-EINTR != ret) {
+                            SAMPLE_LOG_E("[%d] push eof to fifo fail, ret = %d", context->cookie, ret);
+                        }
                     }
                 }
+
+                ffmpeg_stop_dispatch(context);
                 break;
             } else {
                 SAMPLE_LOG_E("[%d] av_read_frame() fail, %s", context->cookie, AVERRMSG(ret, msg));
@@ -571,72 +612,228 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
     SAMPLE_LOG_I("[%d] demuxed    total %ld frames ---", context->cookie, count);
 }
 
+static void ffmpeg_rtmp_thread(ffmpeg_context *context) {
+    SAMPLE_LOG_I("[%d] +++", context->cookie);
+
+    int ret;
+    char errbuf[256];
+    int64_t start_time = 0;
+    int frame_idx = 0;
+    int audio_idx = 0;
+
+    if (!(context->avfmt_rtmp_ctx->oformat->flags & AVFMT_NOFILE)) {
+        ret = avio_open(&context->avfmt_rtmp_ctx->pb, context->rtmp_url.c_str(), AVIO_FLAG_WRITE);
+        if (ret < 0) {
+            fprintf(stderr, "Could not open output URL '%s'", context->rtmp_url.c_str());
+            return;
+        }
+    }
+
+    // Write file header
+    ret = avformat_write_header(context->avfmt_rtmp_ctx, NULL);
+    if (ret < 0) {
+        fprintf(stderr, "Error occured when opening output URL\n");
+        return;
+    }
+
+    AVPacket *avpkt = av_packet_alloc();
+    if (!avpkt) {
+        SAMPLE_LOG_E("[%d] av_packet_alloc() fail!", context->cookie);
+        return;
+    }
+
+    start_time = av_gettime();
+    while (context->demux_thread.running()) {
+        AVStream *in_stream;
+        AVStream *out_stream;
+
+        nalu_data nalu_v;
+        uint32_t total_len = 0;
+
+        if (context->fifo_v->size() > 0) {
+            if (ret = context->fifo_v->peek(nalu_v, total_len, -1); 0 != ret) {
+                SAMPLE_LOG_E("[%d] peek from fifo fail, ret = %d", context->cookie, ret);
+                continue;
+            }
+            avpkt->data = nalu_v.nalu;
+            avpkt->size = nalu_v.len;
+            SAMPLE_LOG_I("peek size %d  %d---", avpkt->size, nalu_v.pts);
+
+            context->fifo_v->skip(total_len);
+
+        } else {
+            av_usleep(1000); // 等待一段时间再检查 FIFO
+            continue;
+        }
+
+        // write pts
+        if (avpkt->pts == AV_NOPTS_VALUE) {
+            // write pts
+            AVRational time_base1 = context->avfmt_in_ctx->streams[context->video_track_id]->time_base;
+            // Duration between 2 frames (us)
+            int64_t calc_duration = (double)AV_TIME_BASE / av_q2d(context->avfmt_in_ctx->streams[context->video_track_id]->r_frame_rate);
+            // parameters
+            // pts是播放时间戳,告诉播放器什么时候播放这一帧视频,PTS通常是按照递增顺序排列的,以保证正确的时间顺序和播放同步
+            // dts是解码时间戳,告诉播放器什么时候解码这一帧视频
+            avpkt->pts = (double)(frame_idx * calc_duration) / (double)(av_q2d(time_base1) * AV_TIME_BASE);
+            avpkt->dts = avpkt->pts;
+            avpkt->duration = (double)calc_duration / (double)(av_q2d(time_base1) * AV_TIME_BASE);
+        }
+
+        // important: delay
+        if (avpkt->stream_index == context->video_track_id) {
+            AVRational time_base = context->avfmt_in_ctx->streams[context->video_track_id]->time_base;
+            AVRational time_base_q = {1, AV_TIME_BASE};
+            int64_t pts_time = av_rescale_q(avpkt->dts, time_base, time_base_q);
+            int64_t now_time = av_gettime() - start_time;
+            if (pts_time > now_time) {
+                av_usleep(pts_time - now_time);
+            }
+            // av_usleep(50);
+        }
+
+        in_stream = context->avfmt_in_ctx->streams[avpkt->stream_index];
+        out_stream = context->avfmt_rtmp_ctx->streams[avpkt->stream_index];
+
+        // copy packet
+        // convert PTS/DTS
+        avpkt->pts = av_rescale_q_rnd(avpkt->pts, in_stream->time_base, out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+        avpkt->dts = av_rescale_q_rnd(avpkt->dts, in_stream->time_base, out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+        avpkt->duration = av_rescale_q(avpkt->duration, in_stream->time_base, out_stream->time_base);
+        avpkt->pos = -1;
+
+        // print to screen
+        if (avpkt->stream_index == context->video_track_id) {
+            fprintf(stdout, "Send %8d video frames to output URL\n", frame_idx);
+            frame_idx++;
+        } else if (avpkt->stream_index == context->audio_track_id) {
+            fprintf(stdout, "Send %8d audio frames to output URL\n", audio_idx);
+            audio_idx++;
+        }
+
+        avpkt->stream_index = 0;
+        ret = av_interleaved_write_frame(context->avfmt_rtmp_ctx, avpkt);
+        if (ret < 0) {
+            fprintf(stderr, "Error muxing packet, error code:%d\n", ret);
+            break;
+        }
+        av_packet_unref(avpkt);
+    }
+
+    // write file trailer
+    av_write_trailer(context->avfmt_rtmp_ctx);
+
+    if (!(context->avfmt_rtmp_ctx->oformat->flags & AVFMT_NOFILE)) {
+        avio_closep(&context->avfmt_rtmp_ctx->pb);
+    }
+
+    av_packet_free(&avpkt);
+
+    SAMPLE_LOG_I("[%d] ---", context->cookie);
+}
+
 static int ffmpeg_init_demuxer(ffmpeg_context *context) {
     SAMPLE_LOG_I("[%d] url: %s", context->cookie, context->url.c_str());
 
+    avformat_network_init();
+
     char msg[64] = {0};
     int ret;
-    context->avfmt_ctx = avformat_alloc_context();
-    if (!context->avfmt_ctx) {
+    context->avfmt_in_ctx = avformat_alloc_context();
+    if (!context->avfmt_in_ctx) {
         SAMPLE_LOG_E("[%d] avformat_alloc_context() fail.", context->cookie);
         return -EFAULT;
     }
 
     do {
-        ret = avformat_open_input(&context->avfmt_ctx, context->url.c_str(), NULL, NULL);
+        ret = avformat_open_input(&context->avfmt_in_ctx, context->url.c_str(), NULL, NULL);
         if (ret < 0) {
             SAMPLE_LOG_E("[%d] open %s fail, %s", context->cookie, context->url.c_str(), AVERRMSG(ret, msg));
             break;
         }
 
-        ret = avformat_find_stream_info(context->avfmt_ctx, NULL);
+        ret = avformat_find_stream_info(context->avfmt_in_ctx, NULL);
         if (ret < 0) {
             SAMPLE_LOG_E("[%d] avformat_find_stream_info() fail, %s", context->cookie, AVERRMSG(ret, msg));
             break;
         }
 
-        avformat_alloc_output_context2(&context->avout_mp4_ctx, NULL, NULL, context->out.c_str());
-        if (!context->avout_mp4_ctx) {
+        av_dump_format(context->avfmt_in_ctx, 0, context->url.c_str(), 0);
+
+        avformat_alloc_output_context2(&context->avfmt_mp4_ctx, NULL, NULL, context->mp4_file.c_str());
+        if (!context->avfmt_mp4_ctx) {
             SAMPLE_LOG_E("avformat_alloc_output_context2 failed\n");
             break;
         }
 
-        for (unsigned int i = 0; i < context->avfmt_ctx->nb_streams; i++) {
-            SAMPLE_LOG_I("type of the encoded data: %d\n", context->avfmt_ctx->streams[i]->codecpar->codec_id);
-            if (AVMEDIA_TYPE_VIDEO == context->avfmt_ctx->streams[i]->codecpar->codec_type) {
-                context->video_track_id = i;
-                context->src_video = context->avfmt_ctx->streams[i];  // 保存视频的时间基
-                SAMPLE_LOG_I("the video frame pixels: width: %d, height: %d, pixel format: %d\n",
-                             context->avfmt_ctx->streams[i]->codecpar->width, context->avfmt_ctx->streams[i]->codecpar->height,
-                             context->avfmt_ctx->streams[i]->codecpar->format);
+        ret = avformat_alloc_output_context2(&context->avfmt_rtmp_ctx, NULL, "flv", context->rtmp_url.c_str());  // RTMP
+        if (ret < 0) {
+            fprintf(stderr, "Could not create output context, error code:%d\n", ret);
+            break;
+        }
 
-                context->dest_video = avformat_new_stream(context->avout_mp4_ctx, NULL);
+        context->video_track_id = av_find_best_stream(context->avfmt_in_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
+        SAMPLE_LOG_I("%s video_index = %d", context->url.c_str(), context->video_track_id);
+
+        context->audio_track_id = av_find_best_stream(context->avfmt_in_ctx, AVMEDIA_TYPE_AUDIO, -1, -1, NULL, 0);
+        SAMPLE_LOG_I("%s audio_index = %d", context->url.c_str(), context->audio_track_id);
+
+        for (unsigned int i = 0; i < context->avfmt_in_ctx->nb_streams; i++) {
+            SAMPLE_LOG_I("type of the encoded data: %d\n", context->avfmt_in_ctx->streams[i]->codecpar->codec_id);
+            if (AVMEDIA_TYPE_VIDEO == context->avfmt_in_ctx->streams[i]->codecpar->codec_type) {
+                context->video_track_id = i;
+                context->src_video = context->avfmt_in_ctx->streams[i];  // 保存视频的时间基
+                SAMPLE_LOG_I("the video frame pixels: width: %d, height: %d, pixel format: %d\n",
+                             context->avfmt_in_ctx->streams[i]->codecpar->width, context->avfmt_in_ctx->streams[i]->codecpar->height,
+                             context->avfmt_in_ctx->streams[i]->codecpar->format);
+
+                context->dest_video = avformat_new_stream(context->avfmt_mp4_ctx, NULL);
                 if (!context->dest_video) {
                     SAMPLE_LOG_E("avformat_new_stream\n");
                     break;
                 }
-                if (avcodec_parameters_copy(context->dest_video->codecpar, context->avfmt_ctx->streams[i]->codecpar) < 0) {
+                if (avcodec_parameters_copy(context->dest_video->codecpar, context->avfmt_in_ctx->streams[i]->codecpar) < 0) {
                     SAMPLE_LOG_E("avcodec_parameters_copy\n");
                     break;
                 }
                 context->dest_video->codecpar->codec_id = context->encodec;
                 context->dest_video->codecpar->codec_tag = 0;
-            } else if (AVMEDIA_TYPE_AUDIO == context->avfmt_ctx->streams[i]->codecpar->codec_type) {
+                break;
+            } else if (AVMEDIA_TYPE_AUDIO == context->avfmt_in_ctx->streams[i]->codecpar->codec_type) {
                 context->audio_track_id = i;
-                context->src_audio = context->avfmt_ctx->streams[i];  // 保存音频的时间基
-                SAMPLE_LOG_I("audio sample format: %d\n", context->avfmt_ctx->streams[i]->codecpar->format);
+                context->src_audio = context->avfmt_in_ctx->streams[i];  // 保存音频的时间基
+                SAMPLE_LOG_I("audio sample format: %d\n", context->avfmt_in_ctx->streams[i]->codecpar->format);
 
-                context->dest_audio = avformat_new_stream(context->avout_mp4_ctx, NULL);
+                context->dest_audio = avformat_new_stream(context->avfmt_mp4_ctx, NULL);
                 if (!context->dest_audio) {
                     SAMPLE_LOG_E("avformat_new_stream\n");
                     break;
                 }
-                if (avcodec_parameters_copy(context->dest_audio->codecpar, context->avfmt_ctx->streams[i]->codecpar) < 0) {
+                if (avcodec_parameters_copy(context->dest_audio->codecpar, context->avfmt_in_ctx->streams[i]->codecpar) < 0) {
                     SAMPLE_LOG_E("avcodec_parameters_copy\n");
                     break;
                 }
                 context->dest_audio->codecpar->codec_tag = 0;
+                break;
             }
+        }
+
+        for (unsigned int i = 0; i < 1; i++) {
+            AVStream *in_stream = context->avfmt_in_ctx->streams[i];
+            AVStream *out_stream = avformat_new_stream(context->avfmt_rtmp_ctx, context->avfmt_in_ctx->video_codec);
+            if (!out_stream) {
+                fprintf(stderr, "Failed to allocating output stream\n");
+                ret = AVERROR_UNKNOWN;
+                break;
+            }
+
+            ret = avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar);
+            if (ret < 0) {
+                fprintf(stderr, "Failed to copy context from input to output stream codec context\n");
+                break;
+            }
+
+            out_stream->codecpar->codec_tag = 0;
         }
 
         if (-1 == context->video_track_id) {
@@ -644,7 +841,7 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
             SAMPLE_LOG_E("[%d] has no video stream", context->cookie);
             break;
         } else {
-            AVStream *avs = context->avfmt_ctx->streams[context->video_track_id];
+            AVStream *avs = context->avfmt_in_ctx->streams[context->video_track_id];
             switch (avs->codecpar->codec_id) {
                 case AV_CODEC_ID_H264:
                     context->info.video.payload = PT_H264;
@@ -660,6 +857,7 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
             context->info.video.width = avs->codecpar->width;
             context->info.video.height = avs->codecpar->height;
             context->fifo = new nalu_lock_fifo(context->info.video.width * context->info.video.height * 2);
+            context->fifo_v = new nalu_lock_fifo(context->info.video.width * context->info.video.height * 2);
 
             if (avs->avg_frame_rate.den == 0 || (avs->avg_frame_rate.num == 0 && avs->avg_frame_rate.den == 1)) {
                 context->info.video.fps = static_cast<uint32_t>(round(av_q2d(avs->r_frame_rate)));
@@ -691,13 +889,13 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
                 break;
             }
 
-            ret = avcodec_parameters_copy(context->avbsf_ctx->par_in, context->avfmt_ctx->streams[context->video_track_id]->codecpar);
+            ret = avcodec_parameters_copy(context->avbsf_ctx->par_in, context->avfmt_in_ctx->streams[context->video_track_id]->codecpar);
             if (ret < 0) {
                 SAMPLE_LOG_E("[%d] avcodec_parameters_copy() fail, %s", context->cookie, AVERRMSG(ret, msg));
                 break;
             }
 
-            context->avbsf_ctx->time_base_in = context->avfmt_ctx->streams[context->video_track_id]->time_base;
+            context->avbsf_ctx->time_base_in = context->avfmt_in_ctx->streams[context->video_track_id]->time_base;
 
             ret = av_bsf_init(context->avbsf_ctx);
             if (ret < 0) {
@@ -719,25 +917,30 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
 }
 
 static int ffmpeg_deinit_demuxer(ffmpeg_context *context) {
-    if (context->avfmt_ctx) {
-        avformat_close_input(&context->avfmt_ctx);
+    if (context->avfmt_in_ctx) {
+        avformat_close_input(&context->avfmt_in_ctx);
         /*  avformat_close_input will free ctx
             http://ffmpeg.org/doxygen/trunk/demux_8c_source.html
         */
-        // avformat_free_context(avfmt_ctx);
-        context->avfmt_ctx = nullptr;
+        // avformat_free_context(avfmt_in_ctx);
+        context->avfmt_in_ctx = nullptr;
     }
 
-    if (context->avout_mp4_ctx) {
-        if (!(context->avout_mp4_ctx->oformat->flags & AVFMT_NOFILE)) avio_closep(&context->avout_mp4_ctx->pb);
+    if (context->avfmt_mp4_ctx) {
+        if (!(context->avfmt_mp4_ctx->oformat->flags & AVFMT_NOFILE)) avio_closep(&context->avfmt_mp4_ctx->pb);
 
-        avformat_close_input(&context->avout_mp4_ctx);
-        context->avout_mp4_ctx = nullptr;
+        avformat_close_input(&context->avfmt_mp4_ctx);
+        context->avfmt_mp4_ctx = nullptr;
     }
 
     if (context->fifo) {
         delete context->fifo;
         context->fifo = nullptr;
+    }
+
+    if (context->fifo_v) {
+        delete context->fifo_v;
+        context->fifo_v = nullptr;
     }
 
     return 0;

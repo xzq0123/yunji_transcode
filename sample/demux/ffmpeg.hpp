@@ -11,6 +11,7 @@
 #pragma once
 #include <stdint.h>
 #include "ax_global_type.h"
+#include "nalu_lock_fifo.hpp"
 
 extern "C" {
 #include "libavcodec/avcodec.h"
@@ -86,3 +87,4 @@ int ffmpeg_set_demuxer_sink(ffmpeg_demuxer demuxer, stream_sink sink, uint64_t u
 int ffmpeg_set_demuxer_attr(ffmpeg_demuxer demuxer, const char *name, const void *attr);
 
 int ffmpeg_push_video_packet(ffmpeg_demuxer demuxer, AVPacket packet);
+int ffmpeg_push_video_nalu(ffmpeg_demuxer demuxer, nalu_data *nalu);

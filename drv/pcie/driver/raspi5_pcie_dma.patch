@@ -1,0 +1,22 @@
+diff --git a/ext_drv/pcie/mmb/ax_mmb.c b/ext_drv/pcie/mmb/ax_mmb.c
+index 681cc9a57..8eb280a2f 100644
+--- a/ext_drv/pcie/mmb/ax_mmb.c
++++ b/ext_drv/pcie/mmb/ax_mmb.c
+@@ -216,7 +216,7 @@ static long ax_mmb_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
+		PCIe_PRINT(PCIe_DEBUG,
+			   "ax_mmb_ioctl: get video buffer base phy addr");
+		ax_mmb = (void *)fp->private_data;
+-		dma_phy_addr = ax_mmb->dma_phy_addr;
++		dma_phy_addr = ax_mmb->dma_phy_addr + 0x1000000000;
+		if (copy_to_user
+		    ((void *)arg, (void *)&dma_phy_addr, sizeof(long))) {
+			PCIe_PRINT(PCIe_ERR, "copy data to usr space failed");
+@@ -249,7 +249,7 @@ static long ax_mmb_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
+		PCIe_PRINT(PCIe_DEBUG,
+			   "invalid: meminfo.phy = 0x%llx, meminfo.vir = 0x%llx, meminfo.size = 0x%llx",
+			   meminfo.phy, meminfo.vir, meminfo.size);
+-		ret = ax_mmb_invalidate_dcache_area(meminfo.phy, meminfo.size);
++		ret = ax_mmb_invalidate_dcache_area(meminfo.phy - 0x1000000000, meminfo.size);
+		break;
+	case AX_IOC_PCIe_FLUSH_CACHED:
+		if (copy_from_user

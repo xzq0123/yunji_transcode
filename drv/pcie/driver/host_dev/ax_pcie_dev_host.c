@@ -163,6 +163,27 @@ static int ax_get_slot_index(struct pci_dev *pdev)
 	return slot_index;
 }
 
+static int ax_get_bus_domain(struct pci_dev *pdev)
+{
+#ifdef CONFIG_PCI_DOMAINS_GENERIC
+	axera_trace(AXERA_ERR, "domain:%d", pdev->bus->domain_nr);
+	return pdev->bus->domain_nr;
+#else
+	axera_trace(AXERA_ERR, "no domain");
+	return 0;
+#endif
+}
+
+static unsigned int ax_get_dev_slot(struct pci_dev *pdev)
+{
+	return PCI_SLOT(pdev->devfn);
+}
+
+static unsigned int ax_get_dev_func(struct pci_dev *pdev)
+{
+	return PCI_FUNC(pdev->devfn);
+}
+
 #ifdef SHMEM_FROM_MASTER
 static int ax_pcie_alloc_shmem_space(struct axera_dev *ax_dev)
 {
@@ -198,6 +219,11 @@ static int ax_pcie_alloc_shmem_space(struct axera_dev *ax_dev)
 			dev_err(&pdev->dev, "failed to allocate mem space\n");
 			return -2;
 		}
+
+		ax_dev->org_phys_addr = org_phys_addr;
+		ax_dev->org_addr = space;
+		ax_dev->org_size = size + alignment;
+
 		phys_addr = (org_phys_addr + alignment) & ~alignment;
 		offset = phys_addr - org_phys_addr;
 		space = space + offset;
@@ -221,9 +247,6 @@ static int ax_pcie_dev_probe(struct pci_dev *pdev,
 	int irq_num = -1;
 	enum pci_barno bar;
 	void __iomem *base;
-#ifdef SHMEM_FROM_MASTER
-	size_t alignment = 0xffff;
-#endif
 	struct axera_dev *ax_dev;
 	irqreturn_t(*host_handler) (int irq, void *id);
 
@@ -298,6 +321,9 @@ static int ax_pcie_dev_probe(struct pci_dev *pdev,
 	ax_dev->shm_size = ax_dev->bar_info[BAR_0].size;
 #endif
 	ax_dev->slot_index = ax_get_slot_index(pdev);
+	ax_dev->domain = ax_get_bus_domain(pdev);
+	ax_dev->dev_slot = ax_get_dev_slot(pdev);
+	ax_dev->dev_func = ax_get_dev_func(pdev);
 	ax_dev->device_id = g_pcie_opt->pci_vendor_id(ax_dev);
 	g_pcie_opt->local_slot_number();
 
@@ -343,8 +369,8 @@ alloc_shmem_err:
 	if (shm_phys_addr) {
 		devm_iounmap(&pdev->dev, ax_dev->ob_base_virt);
 	} else {
-		dma_free_coherent(&pdev->dev, ax_dev->ob_size * 2 + alignment,
-				ax_dev->ob_base_virt, ax_dev->ob_base);
+		dma_free_coherent(&pdev->dev, ax_dev->org_size,
+				ax_dev->org_addr, ax_dev->org_phys_addr);
 	}
 init_axdev_err:
 #endif
@@ -381,6 +407,15 @@ static void ax_pcie_dev_remove(struct pci_dev *pdev)
 	}
 
 	g_pcie_opt->release_msg_irq(ax_dev);
+
+#ifdef SHMEM_FROM_MASTER
+	if (shm_phys_addr) {
+		devm_iounmap(&pdev->dev, ax_dev->ob_base_virt);
+	} else {
+		dma_free_coherent(&pdev->dev, ax_dev->org_size,
+				ax_dev->org_addr, ax_dev->org_phys_addr);
+	}
+#endif
 	pci_free_irq_vectors(pdev);
 	pci_release_regions(pdev);
 	pci_disable_device(pdev);

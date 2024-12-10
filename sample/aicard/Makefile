@@ -39,6 +39,10 @@ SRCCPPS                   := $(wildcard $(SRC_PATH)/*.cpp) \
                              $(wildcard $(AXCL_HOME_PATH)/sample/aicard/component/vo/*.cpp) \
                              $(wildcard $(AXCL_HOME_PATH)/sample/aicard/component/yuv/*.cpp)
 
+SRCCPPS                   += $(AXCL_HOME_PATH)/toolkit/elapser.cpp
+
+SRCS                      += $(AXCL_HOME_PATH)/toolkit/axcl_fifo.c
+
 CINCLUDE                  := -I$(SRC_PATH) \
                              -I$(MSP_INC_PATH) \
                              -I$(AXCL_INC_PATH) \
@@ -72,7 +76,6 @@ TARGET                    := $(TARGET_OUT_PATH)/$(MOD_NAME)
 
 # build flags
 CPPFLAGS                  := --std=c++17
-CFLAGS                    += $(CPPFLAGS)
 CFLAGS                    += -DAXCL_BUILD_VERSION=\"$(SDK_VERSION)\"
 CFLAGS                    += -D__RTSP_UNSUPPORT__
 

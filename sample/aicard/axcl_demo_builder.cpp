@@ -207,7 +207,7 @@ AX_BOOL CAxclDemoBuilder::InitStreamer(const STREAM_CONFIG_T &streamConfig) {
 }
 
 AX_BOOL CAxclDemoBuilder::InitHostDisplay(const DISPVO_CONFIG_T &dispVoConfig) {
-    m_disp = make_unique<CVo>();
+    m_disp = make_shared<CVo>();
     if (!m_disp) {
         LOG_MM_E(AXCL_DEMO, "Create display instance failed.");
         return AX_FALSE;
@@ -490,6 +490,7 @@ AX_BOOL CAxclDemoBuilder::InitDeviceIvps(const IVPS_CONFIG_T &tIvpsConfig) {
                         // }
 
                         pIvpsIns->RegisterObserver(0, m_dispObserver.get());
+                        pIvpsIns->BindVo(0, m_disp);
 
                         AX_MOD_INFO_T tPrev {AX_ID_VDEC, nGrp, 0};
                         AX_MOD_INFO_T tNext {AX_ID_IVPS, nGrp, 0};

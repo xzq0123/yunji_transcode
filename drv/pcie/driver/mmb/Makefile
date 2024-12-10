@@ -17,7 +17,11 @@ EXTRA_CFLAGS            += -I$(AXCL_PCIE_PATH)/include \
 
 ccflags-y               += -DAXCL_MODULE_NAME=\"$(MODULE_NAME)\"
 
+ifeq ($(HOST),x86)
 SRCS                    := ax_mmb.c version.c
+else
+SRCS                    := ax_mmb.c ax_mmb_cache.o version.c
+endif
 
 $(MODULE_NAME)-objs     := $(SRCS:%.c=%.o)
 

@@ -29,6 +29,7 @@ extern "C" {
 #define AXCL_ERR_DEVICE_NOT_ACTIVE          AXCL_DEF_DEVICE_ERR(0x83)
 #define AXCL_ERR_DEVICE_INVALID_ID          AXCL_DEF_DEVICE_ERR(0x84)
 #define AXCL_ERR_DEVICE_NO_ACTIVE_DEVICE    AXCL_DEF_DEVICE_ERR(0x85)
+#define AXCL_ERR_DEVICE_PORT_ALLOCATE       AXCL_DEF_DEVICE_ERR(0x86)
 
 axclError axclrtSetDevice(int32_t deviceId);
 axclError axclrtResetDevice(int32_t deviceId);

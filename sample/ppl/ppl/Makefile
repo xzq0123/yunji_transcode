@@ -35,8 +35,7 @@ CINCLUDE                  := -I$(SRC_PATH) \
                              -I$(AXCL_INC_PATH) \
                              -I$(AXCL_HEADER_INTERNAL_PATH) \
                              -I$(AXCL_HOME_PATH)/toolkit \
-                             -I$(AXCL_HOME_PATH)/3rdparty/spdlog/$(ARCH)/include \
-                             -I$(HOME_PATH)/axcl/drv/pcie/driver/include
+                             -I$(AXCL_HOME_PATH)/3rdparty/spdlog/$(ARCH)/include
 
 OBJS                      := $(SRCCPPS:%.cpp=$(OUTPUT)/%.o)
 OBJS                      += $(SRCS:%.c=$(OUTPUT)/%.o)

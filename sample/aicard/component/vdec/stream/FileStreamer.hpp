@@ -11,6 +11,7 @@
 #pragma once
 #include "AXThread.hpp"
 #include "IStreamHandler.hpp"
+#include "nalu_lock_fifo.hpp"
 extern "C" {
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
@@ -29,6 +30,7 @@ public:
 
 protected:
     AX_VOID DemuxThread(AX_VOID *pArg);
+    AX_VOID DispatchThread(AX_VOID* pArg);
 
 private:
     AX_S32 m_nDevID{0};
@@ -42,4 +44,8 @@ private:
     AX_U32 m_nMaxSendNaluIntervalMilliseconds{0};
     AX_U32 m_nForceFps{0};
     AX_U32 m_nFrmDelay{0};
+    CAXThread m_DispatchThread;
+    /* dispatch fifo */
+    nalu_lock_fifo *m_fifo{nullptr};
+    AX_BOOL m_bFrameRateControl{AX_FALSE};
 };

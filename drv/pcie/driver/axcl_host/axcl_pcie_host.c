@@ -35,7 +35,6 @@ static dma_addr_t phys_addr;
 static void *dma_virt_addr;
 
 static spinlock_t g_axcl_lock;
-unsigned int g_heartbeat_stop;
 struct device_connect_status heartbeat_status;
 unsigned int port_info[AXERA_MAX_MAP_DEV][MAX_MSG_PORTS] = { 0 };
 struct axcl_device_info g_pttr[AXCL_PROCESS_MAX][AXERA_MAX_MAP_DEV] = { 0 };
@@ -329,6 +328,8 @@ int axcl_device_sysdump(struct axera_dev *ax_dev)
 	loff_t pos = 0;
 	struct timespec64 ts;
 	struct tm tm;
+	time64_t local_time;
+	unsigned long minutes_west;
 	char filename[AXCL_NAME_LEN];
 	int boot_reason;
 	int dumpsize = sysdump_ctrl.size;
@@ -344,10 +345,12 @@ int axcl_device_sysdump(struct axera_dev *ax_dev)
 		return 0;
 	}
 
-	printk("[INFO]: DEV EXCEPTION, DUMP...\n");
+	printk("[INFO]: DEV %x EXCEPTION, DUMP...\n", ax_dev->slot_index);
 
 	ktime_get_real_ts64(&ts);
-	time64_to_tm(ts.tv_sec, 0, &tm);
+	minutes_west = sys_tz.tz_minuteswest;
+	local_time = ts.tv_sec + (minutes_west * 60 * -1);
+	time64_to_tm(local_time, 0, &tm);
 	snprintf(filename, AXCL_NAME_LEN, "%s/%s_%x.%04ld%02d%02d%02d%02d%02d",
 		sysdump_ctrl.path, AXCL_SYSDUMP_NAME, ax_dev->slot_index, tm.tm_year + 1900,
 		tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
@@ -549,6 +552,10 @@ int heartbeat_recv_thread(void *pArg)
 	hbeat = (struct device_heart_packet *)axdev->shm_base_virt;
 
 	do {
+		if (kthread_should_stop()) {
+			break;
+		}
+
 		ret =
 		    axcl_heartbeat_recv_timeout(hbeat, target, count, timeout);
 		if (ret <= 0) {
@@ -570,7 +577,8 @@ int heartbeat_recv_thread(void *pArg)
 		}
 		count = ret;
 		axcl_devices_heartbeat_status_set(target, AXCL_HEARTBEAT_ALIVE);
-	} while (!g_heartbeat_stop);
+	} while (1);
+
 	return 0;
 }
 
@@ -621,11 +629,13 @@ int axcl_pcie_port_manage(struct axcl_device_info *devinfo)
 
 		if (count == AXCL_MAX_PORT)
 			break;
-		axcl_trace(AXCL_DEBUG, "alloc port: 0x%x", i);
+
 		port_info[target][i] = i;
 		devinfo->ports[count] = i;
 		g_pttr[pro][target].pid = pid;
 		g_pttr[pro][target].ports[count] = i;
+
+		axcl_trace(AXCL_INFO, "alloc port:  i: 0x%x, pro: %d, target: %d, pid: %d", i, pro, target, g_pttr[pro][target].pid);
 		count++;
 	}
 
@@ -735,11 +745,48 @@ static void axcl_get_devices(struct device_list_t *devlist)
 	devlist->num = i;
 }
 
+static void axcl_get_bus_info(struct axcl_bus_info_t *businfo)
+{
+	unsigned int i;
+	for (i = 0; i < g_pcie_opt->remote_device_number; ++i) {
+		if (g_axera_dev_map[i]->slot_index == businfo->device) {
+			businfo->domain = g_axera_dev_map[i]->domain;
+			businfo->slot = g_axera_dev_map[i]->dev_slot;
+			businfo->func = g_axera_dev_map[i]->dev_func;
+			break;
+		}
+	}
+}
+
+static void axcl_get_pid_info(struct axcl_pid_info_t *pidinfo)
+{
+	unsigned int i;
+	unsigned int j;
+	unsigned int target;
+	for (i = 0; i < g_pcie_opt->remote_device_number; ++i) {
+		if (g_axera_dev_map[i]->slot_index == pidinfo->device) {
+			target = g_axera_dev_map[i]->slot_index;
+			pidinfo->num = 0;
+			for (j = 0; j < AXCL_PROCESS_MAX; ++j) {
+				if (g_pttr[j][target].pid > 0) {
+					pidinfo->pid[pidinfo->num++] = g_pttr[j][target].pid;
+				}
+			}
+			break;
+		}
+	}
+}
+
 static int axcl_pcie_open(struct inode *inode, struct file *file)
 {
 	int i;
 
 	axcl_trace(AXCL_DEBUG, "axcl pcie open pid = %d.", current->pid);
+
+	if (down_interruptible(&ioctl_sem)) {
+		axcl_trace(AXCL_ERR, "acquire handle sem failed!");
+		return -1;
+	}
 
 	for (i = 0; i < AXCL_PROCESS_MAX; i++) {
 		if (g_pro_wait[i].pid == 0) {
@@ -749,12 +796,15 @@ static int axcl_pcie_open(struct inode *inode, struct file *file)
 	}
 	if (i == AXCL_PROCESS_MAX) {
 		axcl_trace(AXCL_ERR, "Not free process id.");
+		up(&ioctl_sem);
 		return -1;
 	}
 
 	axcl_trace(AXCL_DEBUG, "axcl pcie open end: %d", i);
 
 	file->private_data = &g_pro_wait[i];
+
+	up(&ioctl_sem);
 	return 0;
 }
 
@@ -805,11 +855,17 @@ static int axcl_pcie_release(struct inode *inode, struct file *file)
 	unsigned int target;
 	unsigned int pid = current->tgid;
 	unsigned int port = AXCL_NOTIFY_PORT;
-	int i, j;
+	int i, j, k;
 	int ret;
 
 	axcl_trace(AXCL_DEBUG, "current pid = %d, current tgid = %d, current name = %s",
 				current->pid, current->tgid, current->comm);
+
+	if (down_interruptible(&ioctl_sem)) {
+		axcl_trace(AXCL_ERR, "acquire handle sem failed!");
+		return -1;
+	}
+
 	for (i = 0; i < AXCL_PROCESS_MAX; i++) {
 		for (j = 0; j < AXERA_MAX_MAP_DEV; j++) {
 			if (pid == g_pttr[i][j].pid) {
@@ -831,13 +887,22 @@ static int axcl_pcie_release(struct inode *inode, struct file *file)
 					axcl_trace(AXCL_ERR,
 						   "Send create port msg info failed: %d",
 						   ret);
+					up(&ioctl_sem);
 					return -1;
 				}
 				axcl_clean_port_info(i, j, pid);
+			} else {
+				for (k = 0; k < AXCL_PROCESS_MAX; k++) {
+					if (g_pro_wait[k].pid == pid) {
+						g_pro_wait[k].pid = 0;
+						break;
+					}
+				}
 			}
 		}
 	}
 
+	up(&ioctl_sem);
 	return 0;
 }
 
@@ -847,6 +912,8 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 	int ret = 0;
 	struct axcl_device_info devinfo;
 	struct device_list_t devlist;
+	struct axcl_bus_info_t businfo;
+	struct axcl_pid_info_t pidinfo;
 
 	if (down_interruptible(&ioctl_sem)) {
 		axcl_trace(AXCL_ERR, "acquire handle sem failed!");
@@ -860,7 +927,7 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_to_user
 		    ((void *)arg, (void *)&devlist,
 		     sizeof(struct device_list_t))) {
-			printk("copy to usr space failed!\n");
+			axcl_trace(AXCL_ERR, "IOC_AXCL_DEVICE_LIST copy to usr space failed!");
 			ret = -1;
 			goto out;
 		}
@@ -870,7 +937,7 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_from_user
 		    ((void *)&devinfo, (void *)arg,
 		     sizeof(struct axcl_device_info))) {
-			printk("Get parameter from usr space failed!\n");
+			axcl_trace(AXCL_ERR, "IOC_AXCL_PORT_MANAGE Get parameter from usr space failed!");
 			ret = -1;
 			goto out;
 		}
@@ -882,7 +949,7 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 			if (copy_to_user
 			    ((void *)arg, (void *)&devinfo,
 			     sizeof(struct axcl_device_info))) {
-				printk("copy to usr space failed!\n");
+				axcl_trace(AXCL_ERR, "IOC_AXCL_PORT_MANAGE copy to usr space failed!");
 				ret = -1;
 				goto out;
 			}
@@ -893,7 +960,7 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_to_user
 		    ((void *)arg, (void *)&heartbeat_status,
 		     sizeof(struct device_connect_status))) {
-			printk("copy to usr space failed!\n");
+			axcl_trace(AXCL_ERR, "IOC_AXCL_CONN_STATUS copy to usr space failed!");
 			ret = -1;
 			goto out;
 		}
@@ -902,7 +969,7 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		axcl_trace(AXCL_DEBUG, "IOC_AXCL_WAKEUP_STATUS.");
 		ret = axcl_wake_up_poll();
 		if (ret < 0) {
-			axcl_trace(AXCL_ERR, "AXCL wake up poll failed.");
+			axcl_trace(AXCL_ERR, "IOC_AXCL_WAKEUP_STATUS AXCL wake up poll failed.");
 			goto out;
 		}
 		break;
@@ -911,7 +978,7 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_from_user
 		    ((void *)&devinfo, (void *)arg,
 		     sizeof(struct axcl_device_info))) {
-			printk("Get parameter from usr space failed!\n");
+			axcl_trace(AXCL_ERR, "IOC_AXCL_DEVICE_RESET Get parameter from usr space failed!");
 			ret = -1;
 			goto out;
 		}
@@ -922,14 +989,55 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		    axcl_firmware_load(g_pcie_opt->
 				       slot_to_axdev(devinfo.device));
 		if (ret < 0) {
-			axcl_trace(AXCL_ERR, "Device %x firmware load failed.",
+			axcl_trace(AXCL_ERR, "IOC_AXCL_DEVICE_BOOT Device %x firmware load failed.",
 				   devinfo.device);
 			axcl_devices_heartbeat_status_set(devinfo.device,
 							  AXCL_HEARTBEAT_DEAD);
 		}
 		break;
+	case IOC_AXCL_BUS_INFO:
+		axcl_trace(AXCL_DEBUG, "IOC_AXCL_BUS_INFO.");
+		if (copy_from_user
+		    ((void *)&businfo, (void *)arg,
+		     sizeof(struct axcl_bus_info_t))) {
+			axcl_trace(AXCL_ERR, "IOC_AXCL_BUS_INFO Get parameter from usr space failed!");
+			ret = -1;
+			goto out;
+		}
+
+		axcl_get_bus_info(&businfo);
+
+		if (copy_to_user
+		    ((void *)arg, (void *)&businfo,
+		     sizeof(struct axcl_bus_info_t))) {
+			axcl_trace(AXCL_ERR, "IOC_AXCL_BUS_INFO copy to usr space failed!");
+			ret = -1;
+			goto out;
+		}
+		break;
+	case IOC_AXCL_PID_INFO:
+		if (copy_from_user
+		    ((void *)&pidinfo, (void *)arg,
+		     sizeof(struct axcl_pid_info_t))) {
+			axcl_trace(AXCL_ERR, "IOC_AXCL_PID_INFO Get parameter from usr space failed!");
+			ret = -1;
+			goto out;
+		}
+
+		axcl_trace(AXCL_INFO, "IOC_AXCL_PID_INFO target = 0x%x", pidinfo.device);
+
+		axcl_get_pid_info(&pidinfo);
+
+		if (copy_to_user
+		    ((void *)arg, (void *)&pidinfo,
+		     sizeof(struct axcl_pid_info_t))) {
+			axcl_trace(AXCL_ERR, "IOC_AXCL_PID_INFO copy to usr space failed!");
+			ret = -1;
+			goto out;
+		}
+		break;
 	default:
-		printk("warning not defined cmd.\n");
+		axcl_trace(AXCL_ERR, "warning not defined cmd.");
 		break;
 	}
 
@@ -1122,10 +1230,11 @@ static void __exit axcl_pcie_host_exit(void)
 	unsigned int target;
 
 	axcl_pcie_proc_remove();
-	g_heartbeat_stop = 1;
 	for (i = 0; i < g_pcie_opt->remote_device_number; i++) {
 		target = g_axera_dev_map[i]->slot_index;
-		kthread_stop(heartbeat[i]);
+		if (heartbeat[i]) {
+			kthread_stop(heartbeat[i]);
+		}
 		host_reset_device(target);
 	}
 
@@ -1137,3 +1246,4 @@ module_exit(axcl_pcie_host_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Axera");
+MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);

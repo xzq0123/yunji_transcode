@@ -48,6 +48,8 @@ int main(int argc, char *argv[]) {
         SAMPLE_LOG_I("device id: %d", device);
     }
 
+    axclAppLog(5, __func__, NULL, __LINE__, "json: %s, device: %d", json.c_str(), device);
+
     if (ret = axclrtSetDevice(device); AXCL_SUCC != ret) {
         axclFinalize();
         return ret;

@@ -1019,7 +1019,6 @@ static int ax_pcie_send_message(struct ax_transfer_handle *handle,
 		if (ret == -3) {
 			while (1) {
 				if (retry_irq == 0) {
-					trans_trace(TRANS_ERR, "ax send irq failed %d\n", ret);
 					ret = len;
 					break;
 				}

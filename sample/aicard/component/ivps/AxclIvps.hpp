@@ -22,9 +22,10 @@
 
 #include "AXThread.hpp"
 #include "AXFrame.hpp"
-#include "AXLockQ.hpp"
+#include "lock_queue.hpp"
 #include "IObserver.h"
 #include "haltype.hpp"
+#include "Vo.hpp"
 
 #define MAX_IVPS_GRP_NUM (AX_IVPS_MAX_GRP_NUM)
 #define MAX_IVPS_CHN_NUM (AX_IVPS_MAX_OUTCHN_NUM)
@@ -81,6 +82,7 @@ typedef struct IVPS_ATTR_S {
 } IVPS_ATTR_T;
 
 class CIVPSDispatcher;
+class CVo;
 class CIVPS {
 public:
     CIVPS(AX_VOID) = default;
@@ -106,6 +108,8 @@ public:
 
     AX_BOOL RegisterObserver(AX_S32 ivChn, IObserver* pObs);
     AX_BOOL UnRegisterObserver(AX_S32 ivChn, IObserver* pObs);
+
+    AX_BOOL BindVo(AX_S32 ivChn, std::shared_ptr<CVo> pVo);
 
     CONST IVPS_ATTR_T& GetAttr(AX_VOID) CONST;
     AX_IVPS_GRP GetGrpId(AX_VOID) CONST;
@@ -153,6 +157,9 @@ public:
 
     AX_VOID RegisterObserver(IObserver* pObs);
     AX_VOID UnRegisterObserver(IObserver* pObs);
+    AX_VOID BindVo(std::shared_ptr<CVo> pVo) {
+        m_pVo = pVo;
+    };
 
 protected:
     AX_VOID DispatchThread(AX_VOID* pArg);
@@ -172,5 +179,6 @@ private:
     CAXThread m_threadSnd;
     AX_BOOL m_bPaused = {AX_FALSE};
     AX_BOOL m_bStarted = {AX_FALSE};
-    CAXLockQ<AX_VIDEO_FRAME_T>* m_qFrameQ{nullptr};
+    axcl::lock_queue<AX_VIDEO_FRAME_T>* m_qFrameQ{nullptr};
+    std::shared_ptr<CVo> m_pVo;
 };

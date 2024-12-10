@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include <sys/prctl.h>
 #include <vector>
 #include <queue>
 #include <memory>
@@ -23,21 +22,9 @@
 #include "log/logger.hpp"
 
 namespace axcl {
-struct thread_attr {
-    bool sched;
-    int32_t sched_policy;
-    uint32_t sched_priority;  /* Range:[1, 99]; encode thread scheduling priority.*/
-
-    thread_attr() {
-        sched = false;
-        sched_policy = SCHED_OTHER;
-        sched_priority = 0;
-    }
-};
-
 class thread_pool {
 public:
-    thread_pool(size_t, const std::string& token = "threads", const thread_attr& attr = thread_attr());
+    thread_pool(size_t, const std::string& token = "threads", const int32_t& sched_policy = SCHED_OTHER, const uint32_t& sched_priority = 0);
     template<class F, class... Args>
     auto enqueue(F&& f, Args&&... args)
         -> std::future<typename std::result_of<F(Args...)>::type>;
@@ -57,7 +44,7 @@ private:
 };
 
 // the constructor just launches some amount of workers
-inline thread_pool::thread_pool(size_t threads, const std::string& token, const thread_attr &attr)
+inline thread_pool::thread_pool(size_t threads, const std::string& token, const int32_t& sched_policy, const uint32_t& sched_priority)
     :   threads_num(threads),
         threads_name(token),
         stop(false)
@@ -75,7 +62,7 @@ inline thread_pool::thread_pool(size_t threads, const std::string& token, const 
                     thread_name = token;
                 }
 
-                prctl(PR_SET_NAME, thread_name.c_str());
+                pthread_setname_np(pthread_self(), thread_name.c_str());
 
                 for(;;) {
                     std::function<void()> task;
@@ -97,12 +84,12 @@ inline thread_pool::thread_pool(size_t threads, const std::string& token, const 
             }
         );
 
-        if (attr.sched) {
+        {
             sched_param sch;
             int policy;
-            pthread_getschedparam(workers[i].native_handle(), &policy, &sch);
-            sch.sched_priority = attr.sched_priority;
-            pthread_setschedparam(workers[i].native_handle(), attr.sched_policy, &sch);
+            pthread_getschedparam(pthread_self(), &policy, &sch);
+            sch.sched_priority = sched_priority;
+            pthread_setschedparam(pthread_self(), sched_policy, &sch);
         }
     }
 }

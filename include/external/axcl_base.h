@@ -78,7 +78,8 @@ typedef enum {
 #define AXCL_RUNTIME_MEMORY  (0x05)
 #define AXCL_RUNTIME_CONFIG  (0x06)
 #define AXCL_RUNTIME_ENGINE  (0x07)
-#define AXCL_RUNTIME_SYSTEM  (0x08)
+#define AXCL_RUNTIME_SYSLOG  (0x08)
+#define AXCL_RUNTIME_SYSCTRL (0x09)
 
 /**
  * |---------------------------------------------------------|

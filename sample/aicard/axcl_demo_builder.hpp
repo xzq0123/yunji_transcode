@@ -77,7 +77,7 @@ protected:
 
     /* host */
     std::unique_ptr<CAxVideoDecoder> m_vdecHost;
-    std::unique_ptr<CVo> m_disp;
+    std::shared_ptr<CVo> m_disp;
     std::unique_ptr<CTransferHelper> m_transHelper;
     std::vector<std::unique_ptr<CDispatcher>> m_arrDispatcher;
     IObserverUniquePtr m_dispObserver;

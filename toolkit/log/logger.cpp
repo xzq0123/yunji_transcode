@@ -11,7 +11,6 @@
 #include "logger.hpp"
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <sys/prctl.h>
 #include <chrono>
 #include <iostream>
 #include <vector>
@@ -22,7 +21,7 @@
 axcl::logger::logger(std::string log_path, std::size_t max_size, std::size_t max_num) noexcept {
     m_logger = spdlog::get(LOGGER_NAME);
     if (!m_logger) {
-        auto on_thread_start = []() { prctl(PR_SET_NAME, LOGGER_NAME); };
+        auto on_thread_start = []() { pthread_setname_np(pthread_self(), LOGGER_NAME); };
         spdlog::init_thread_pool(8192, 1, on_thread_start);
 
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();

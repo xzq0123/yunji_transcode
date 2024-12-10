@@ -17,6 +17,7 @@
 #include "axcl_ppl_default_venc_rc.h"
 #include "cmdline.h"
 #include "demux/ffmpeg.hpp"
+#include "nalu_lock_fifo.hpp"
 #include "ppl_userdata.hpp"
 #include "res_guard.hpp"
 #include "threadx.hpp"
@@ -65,7 +66,7 @@ static void handle_encoded_stream_callback(axcl_ppl ppl, const axcl_ppl_encoded_
 int main(int argc, char *argv[]) {
     const int32_t pid = static_cast<int32_t>(getpid());
     SAMPLE_LOG_I("============== %s sample started %s %s pid %d ==============\n", AXCL_BUILD_VERSION, __DATE__, __TIME__, pid);
-    signal(SIGINT, handler);
+    // signal(SIGINT, handler);
 
     cmdline::parser a;
     a.add<std::string>("url", 'i', "mp4|.264|.265 file path", true);
@@ -321,6 +322,8 @@ static axcl_ppl_transcode_param get_transcode_ppl_param_from_stream(const struct
     return transcode_param;
 }
 
+
+//这个回调就是ffmpeg解码之后的回调。
 static void handle_down_streaming_nalu_frame(const struct stream_data *nalu, uint64_t userdata) {
     ppl_user_data *ppl_info = reinterpret_cast<ppl_user_data *>(userdata);
 
@@ -334,25 +337,25 @@ static void handle_down_streaming_nalu_frame(const struct stream_data *nalu, uin
             SAMPLE_LOG_E("axcl_ppl_send_stream(pid: %d) fail, ret = 0x%x", static_cast<uint32_t>(ppl_info->pid), ret);
         }
     }
+    // SAMPLE_LOG_I("axcl_ppl_send_stream(pid: %d)", static_cast<uint32_t>(ppl_info->pid));
 }
 
+//这个线程应该是编码之后回调的线程
 static void handle_encoded_stream_callback(axcl_ppl ppl, const axcl_ppl_encoded_stream *stream, AX_U64 userdata) {
     ppl_user_data *ppl_info = reinterpret_cast<ppl_user_data *>(userdata);
     /**
      * Avoid any high-latency operations within this callback function.
      */
-    //  SAMPLE_LOG_I("received encoded nalu size %d", stream->stPack.u32Len);
+    // SAMPLE_LOG_I("received encoded nalu size %d", stream->stPack.u32Len);
     if (ppl_info->fp) {
         fwrite(stream->stPack.pu8Addr, 1, stream->stPack.u32Len, ppl_info->fp);
     }
 
-    AVPacket video_packet;
-    av_init_packet(&video_packet);
-    video_packet.data = stream->stPack.pu8Addr;
-    video_packet.size = stream->stPack.u32Len;
-    video_packet.pts = stream->stPack.u64PTS;
-    // SAMPLE_LOG_I("encoded seq num = %lld\n", stream->stPack.u64SeqNum);
-    ffmpeg_push_video_packet(ppl_info->demuxer, video_packet);
+    nalu_data nalu = {};
+    nalu.pts = stream->stPack.u64PTS;
+    nalu.nalu = stream->stPack.pu8Addr;
+    nalu.len = stream->stPack.u32Len;
+    ffmpeg_push_video_nalu(ppl_info->demuxer, &nalu);
 
     ++ppl_info->frame_count;
 }

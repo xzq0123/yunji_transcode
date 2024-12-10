@@ -14,8 +14,10 @@
 #define IOC_AXCL_WAKEUP_POLL    _IOWR(IOC_AXCL_MAGIC, 5, struct axcl_device_info)
 #define IOC_AXCL_DEVICE_RESET	_IOWR(IOC_AXCL_MAGIC, 6, struct axcl_device_info)
 #define IOC_AXCL_DEVICE_BOOT    _IOWR(IOC_AXCL_MAGIC, 7, struct axcl_device_info)
+#define IOC_AXCL_BUS_INFO       _IOWR(IOC_AXCL_MAGIC, 8, struct axcl_bus_info_t)
+#define IOC_AXCL_PID_INFO       _IOWR(IOC_AXCL_MAGIC, 9, struct axcl_pid_info_t)
 
-#define AXCL_PROCESS_MAX    (32)
+#define AXCL_PROCESS_MAX    (64)
 #define AXCL_RECV_TIMEOUT   (50000)
 
 #define AXCL_PATH_NAME   "axcl/ax650_card.pac"
@@ -126,6 +128,19 @@ struct device_list_t {
 	unsigned int type;	/* 0: pcie */
 	unsigned int num;	/* device connected num */
 	unsigned int devices[MAX_DEV_NUMBER];	/* ep target id */
+};
+
+struct axcl_bus_info_t {
+	unsigned int device; /* bus */
+	unsigned int domain;
+	unsigned int slot;
+	unsigned int func;
+};
+
+struct axcl_pid_info_t {
+	unsigned int device;
+	unsigned int num;
+	unsigned int pid[AXCL_PROCESS_MAX];
 };
 
 struct process_wait {

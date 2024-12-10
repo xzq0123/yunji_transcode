@@ -52,11 +52,12 @@ TARGET                    := $(TARGET_OUT_PATH)/$(MOD_NAME)
 CPPFLAGS                  := --std=c++17
 CFLAGS                    += -DAXCL_BUILD_VERSION=\"$(SDK_VERSION)\"
 
-ifeq ($(debug),yes)
-CFLAGS                    += -Wall -O0 -ggdb3
-else
-CFLAGS                    += -Wall -O2
-endif
+# ifeq ($(debug),yes)
+# CFLAGS                    += -Wall -O0 -ggdb3
+# else
+# CFLAGS                    += -Wall -O2
+CFLAGS                    += -g
+# endif
 
 # dependency
 CLIB                      := -lstdc++ -pthread -lm

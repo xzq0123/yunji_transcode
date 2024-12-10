@@ -19,6 +19,7 @@
 #include "AppLogApi.h"
 
 #include "axcl_rt_context.h"
+#include "axcl_rt_memory.h"
 #include "axcl_sys.h"
 #include "axcl_ivps.h"
 
@@ -27,6 +28,8 @@ using namespace std;
 #define TAG "AXCL_IVPS"
 #define CHECK_IVPS_GRP(ivGrp) ((ivGrp) >= 0 && (ivGrp) < MAX_IVPS_GRP_NUM)
 #define CHECK_IVPS_CHN(ivChn) ((ivChn) >= 0 && (ivChn) < MAX_IVPS_CHN_NUM)
+
+#define AXCLIVPS_FIFO_DEPTH (4)
 
 class CIvpsManager {
 public:
@@ -526,6 +529,16 @@ AX_BOOL CIVPS::UnRegisterObserver(AX_S32 ivChn, IObserver* pObs) {
     return AX_TRUE;
 }
 
+AX_BOOL CIVPS::BindVo(AX_S32 ivChn, std::shared_ptr<CVo> pVo) {
+    if (!CHECK_IVPS_CHN(ivChn)) {
+        LOG_M_E(TAG, "%s: ivChn %d of ivGrp %d is invalid", __func__, ivChn, m_ivGrp);
+        return AX_FALSE;
+    }
+
+    m_dispatchers[ivChn]->BindVo(pVo);
+    return AX_TRUE;
+}
+
 AX_BOOL CIVPS::SendFrame(CONST AX_VIDEO_FRAME_T& stVFrame, AX_S32 nTimeOut /* = INFINITE */) {
     if (!CHECK_IVPS_GRP(m_ivGrp)) {
         LOG_M_E(TAG, "%s: ivps is destoryed", __func__);
@@ -585,7 +598,8 @@ AX_BOOL CIVPS::CheckAttr(CONST IVPS_ATTR_T& stAttr) {
 }
 
 CIVPSDispatcher::CIVPSDispatcher(AX_S32 nDevID, IVPS_GRP ivGrp, IVPS_CHN ivChn) noexcept : m_nDevID(nDevID), m_ivGrp(ivGrp), m_ivChn(ivChn) {
-    m_qFrameQ = new (nothrow) CAXLockQ<AX_VIDEO_FRAME_T>;
+    m_qFrameQ = new (nothrow) axcl::lock_queue<AX_VIDEO_FRAME_T>;
+    m_qFrameQ->set_capacity(AXCLIVPS_FIFO_DEPTH);
 }
 
 AX_VOID CIVPSDispatcher::DispatchThread(AX_VOID*) {
@@ -638,14 +652,10 @@ AX_VOID CIVPSDispatcher::SendThread(AX_VOID*) {
     LOG_M_D(TAG, "%s: %d +++", __func__, m_ivGrp);
 
     AX_S32 ret = 0;
-    axclrtContext context;
-    if (axclError ret = axclrtCreateContext(&context, m_nDevID); AXCL_SUCC != ret) {
-        return;
-    }
 
     while (m_threadSnd.IsRunning()) {
         AX_VIDEO_FRAME_T stVFrame;
-        if (!m_qFrameQ->Pop(stVFrame)) {
+        if (!m_qFrameQ->pop(stVFrame)) {
             break;
         }
 
@@ -663,14 +673,13 @@ AX_VOID CIVPSDispatcher::SendThread(AX_VOID*) {
             }
         }
 
-        ret = AXCL_POOL_DecreaseRefCnt(stVFrame.u32BlkId[0]);
+        ret = AX_POOL_DecreaseRefCnt(stVFrame.u32BlkId[0]);
         if (0 != ret) {
             LOG_M_E(TAG, "%s: AXCL_POOL_DecreaseRefCnt(frame %lld, ivGrp %d) fail, ret = 0x%x",
                     __func__, stVFrame.u64SeqNum, m_ivGrp, ret);
         }
     }
 
-    axclrtDestroyContext(context);
     LOG_M_D(TAG, "%s: %d ---", __func__, m_ivGrp);
 }
 
@@ -687,12 +696,12 @@ AX_BOOL CIVPSDispatcher::Start(AX_VOID) {
         return AX_FALSE;
     }
 
-    // AX_CHAR szNameSnd[16];
-    // sprintf(szNameSnd, "AppIvpsSend%d", m_ivGrp);
-    // if (!m_threadSnd.Start([this](AX_VOID* pArg) -> AX_VOID { SendThread(pArg); }, nullptr, szNameSnd)) {
-    //     LOG_M_E(TAG, "start IVPS send thread of ivGrp %d fail", m_ivGrp);
-    //     return AX_FALSE;
-    // }
+    AX_CHAR szNameSnd[16];
+    sprintf(szNameSnd, "AppIvpsSend%d", m_ivGrp);
+    if (!m_threadSnd.Start([this](AX_VOID* pArg) -> AX_VOID { SendThread(pArg); }, this, szNameSnd)) {
+        LOG_M_E(TAG, "start IVPS send thread of ivGrp %d fail", m_ivGrp);
+        return AX_FALSE;
+    }
 
     m_bStarted = AX_TRUE;
     return AX_TRUE;
@@ -707,10 +716,10 @@ AX_BOOL CIVPSDispatcher::Stop(AX_VOID) {
     Resume();
     m_thread.Join();
 
-    // m_threadSnd.Stop();
-    // m_qFrameQ->Wakeup();
-    // m_threadSnd.Join();
-    // ClearQ();
+    m_threadSnd.Stop();
+    m_qFrameQ->wakeup();
+    m_threadSnd.Join();
+    ClearQ();
 
     m_bStarted = AX_FALSE;
     return AX_TRUE;
@@ -739,34 +748,49 @@ AX_VOID CIVPSDispatcher::UnRegisterObserver(IObserver* pObs) {
 }
 
 AX_BOOL CIVPSDispatcher::OnRecvFrame(CONST AX_VIDEO_FRAME_T& stVFrame) {
-    // AX_S32 ret = AXCL_POOL_IncreaseRefCnt(stVFrame.u32BlkId[0]);
-    // if (0 != ret) {
-    //     LOG_M_E(TAG, "%s: AXCL_POOL_IncreaseRefCnt(frame %lld, ivGrp %d) fail, ret = 0x%x",
-    //             __func__, stVFrame.u64SeqNum, m_ivGrp, ret);
-    // }
-    // else {
-    //     if (!m_qFrameQ->Push(stVFrame)) {
-    //         LOG_M_E(TAG, "%s: push frame %lld to q full", __func__, stVFrame.u64SeqNum);
-    //         ret = AXCL_POOL_DecreaseRefCnt(stVFrame.u32BlkId[0]);
-    //         if (0 != ret) {
-    //             LOG_M_E(TAG, "%s: AXCL_POOL_DecreaseRefCnt(frame %lld, ivGrp %d) fail, ret = 0x%x",
-    //                     __func__, stVFrame.u64SeqNum, m_ivGrp, ret);
-    //         }
-    //     }
-    // }
+     AX_U64 u64PhysAddr;
+     AX_U32 u32FrameSize = stVFrame.u32FrameSize;
+     AX_U32 nPriPoolID = m_pVo->GetPriPoolID(m_ivGrp);
+     AX_BLK BlkId = AX_POOL_GetBlock(nPriPoolID, u32FrameSize, NULL);
 
-    CAXFrame axFrame;
-    axFrame.nGrp = m_ivGrp;
-    axFrame.nChn = m_ivChn;
-    axFrame.stFrame.stVFrame.stVFrame = stVFrame;
-    axFrame.stFrame.stVFrame.bEndOfStream = AX_FALSE;
-    axFrame.stFrame.stVFrame.enModId = AX_ID_IVPS;
-
-    std::lock_guard<std::mutex> lck(m_mtxObs);
-    for (auto&& m : m_lstObs) {
-        if (m) {
-            (AX_VOID) m->OnRecvData(E_OBS_TARGET_TYPE_IVPS, m_ivGrp, m_ivChn, &axFrame);
+     if (AX_INVALID_BLOCKID != BlkId) {
+        u64PhysAddr = AX_POOL_Handle2PhysAddr(BlkId);
+        if (!u64PhysAddr) {
+            LOG_M_E(TAG, "[%d] AX_POOL_Handle2PhysAddr failed,BlkId=0x%x", m_ivGrp, BlkId);
+            return AX_FALSE;
         }
+
+        axclrtMemcpy((AX_VOID *)u64PhysAddr, (AX_VOID *)stVFrame.u64PhyAddr[0], stVFrame.u32FrameSize, AXCL_MEMCPY_DEVICE_TO_HOST_PHY);
+
+        AX_VIDEO_FRAME_T tFrame = stVFrame;
+
+        memset(tFrame.u32BlkId, 0, sizeof(tFrame.u32BlkId));
+        memset(tFrame.u64VirAddr, 0, sizeof(tFrame.u64VirAddr));
+        memset(tFrame.u64PhyAddr, 0, sizeof(tFrame.u64PhyAddr));
+
+        tFrame.u32BlkId[0] = BlkId;
+        tFrame.u64PhyAddr[0] = u64PhysAddr;
+
+        AX_S32 ret = AX_POOL_IncreaseRefCnt(tFrame.u32BlkId[0]);
+        if (0 != ret) {
+            LOG_M_E(TAG, "%s: AXCL_POOL_IncreaseRefCnt(frame %lld, ivGrp %d) fail, ret = 0x%x",
+                    __func__, tFrame.u64SeqNum, m_ivGrp, ret);
+        }
+        else {
+            if (!m_qFrameQ->push(tFrame)) {
+                LOG_M_E(TAG, "%s: push frame %lld to q full", __func__, tFrame.u64SeqNum);
+                ret = AX_POOL_DecreaseRefCnt(tFrame.u32BlkId[0]);
+                if (0 != ret) {
+                    LOG_M_E(TAG, "%s: AXCL_POOL_DecreaseRefCnt(frame %lld, ivGrp %d) fail, ret = 0x%x",
+                            __func__, tFrame.u64SeqNum, m_ivGrp, ret);
+                }
+            }
+        }
+
+        AX_POOL_ReleaseBlock(BlkId);
+        return AX_TRUE;
+    } else {
+        LOG_M_E(TAG, "[%d] AX_POOL_GetBlock failed.", m_ivGrp);
     }
 
     return AX_TRUE;
@@ -795,11 +819,11 @@ AX_VOID CIVPSDispatcher::Resume(AX_VOID) {
 AX_VOID CIVPSDispatcher::ClearQ(AX_VOID) {
     if (m_qFrameQ) {
         AX_S32 ret = 0;
-        AX_U32 nCount = m_qFrameQ->GetCount();
+        AX_U32 nCount = m_qFrameQ->size();
         if (nCount > 0) {
             AX_VIDEO_FRAME_T stVFrame;
             for (AX_U32 i = 0; i < nCount; ++i) {
-                if (m_qFrameQ->Pop(stVFrame, 0)) {
+                if (m_qFrameQ->pop(stVFrame, 0)) {
                     ret = AXCL_POOL_DecreaseRefCnt(stVFrame.u32BlkId[0]);
                     if (0 != ret) {
                         LOG_M_E(TAG, "%s: AXCL_POOL_DecreaseRefCnt(frame %lld, ivGrp %d) fail, ret = 0x%x",

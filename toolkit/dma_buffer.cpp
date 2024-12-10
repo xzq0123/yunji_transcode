@@ -25,9 +25,18 @@
 #define TAG "pcie"
 
 // ioctl cmd
-#define PCIE_BASE 'H'
-#define PCIE_DMA_GET_PHY_BASE _IOW(PCIE_BASE, 3, unsigned int)
-#define AX_IOC_PCIe_ALLOC_MEMORY _IOW(PCIE_BASE, 4, unsigned int)
+#define AX_IOC_PCIe_BASE 'H'
+#define AX_IOC_PCIE_DMA_GET_PHY_BASE    _IOW(AX_IOC_PCIe_BASE, 3, unsigned int)
+#define AX_IOC_PCIe_ALLOC_MEMORY        _IOW(AX_IOC_PCIe_BASE, 4, unsigned int)
+#define AX_IOC_PCIe_ALLOC_MEMCACHED     _IOW(AX_IOC_PCIe_BASE, 5, unsigned int)
+#define AX_IOC_PCIe_FLUSH_CACHED        _IOW(AX_IOC_PCIe_BASE, 6, struct ax_mem_info)
+#define AX_IOC_PCIe_INVALID_CACHED      _IOW(AX_IOC_PCIe_BASE, 7, struct ax_mem_info)
+
+struct ax_mem_info {
+    uint64_t phy;
+    uint64_t vir;
+    uint64_t size;
+};
 
 dma_buffer::dma_buffer() : m_fd(-1) {
 }
@@ -48,7 +57,7 @@ dma_buffer &dma_buffer::operator=(dma_buffer &&rhs) noexcept {
     return *this;
 }
 
-bool dma_buffer::alloc(size_t size) {
+bool dma_buffer::alloc(size_t size, bool cached) {
     if (m_fd > 0) {
         LOG_MM_E(TAG, "{} is opened", AX_MM_DEV);
         return false;
@@ -60,16 +69,28 @@ bool dma_buffer::alloc(size_t size) {
         return false;
     }
 
+#ifndef AXCL_CMA_CACHED
+    cached = false;
+#endif
+
     int ret;
     uint64_t dma_buffer_size = size;
-    if (ret = ::ioctl(fd, AX_IOC_PCIe_ALLOC_MEMORY, &dma_buffer_size); ret < 0) {
-        LOG_MM_E(TAG, "allocate pcie dma buffer (size: {}) fail, {}", dma_buffer_size, ::strerror(errno));
-        ::close(fd);
-        return false;
+    if (cached) {
+        if (ret = ::ioctl(fd, AX_IOC_PCIe_ALLOC_MEMCACHED, &dma_buffer_size); ret < 0) {
+            LOG_MM_E(TAG, "allocate pcie cached dma buffer (size: {}) fail, {}", dma_buffer_size, ::strerror(errno));
+            ::close(fd);
+            return false;
+        }
+    } else {
+        if (ret = ::ioctl(fd, AX_IOC_PCIe_ALLOC_MEMORY, &dma_buffer_size); ret < 0) {
+            LOG_MM_E(TAG, "allocate pcie dma buffer (size: {}) fail, {}", dma_buffer_size, ::strerror(errno));
+            ::close(fd);
+            return false;
+        }
     }
 
     uint64_t phy;
-    if (ret = ::ioctl(fd, PCIE_DMA_GET_PHY_BASE, &phy); ret < 0) {
+    if (ret = ::ioctl(fd, AX_IOC_PCIE_DMA_GET_PHY_BASE, &phy); ret < 0) {
         LOG_MM_E(TAG, "get pcie dma phy address fail, {}", ::strerror(errno));
         ::close(fd);
         return false;
@@ -86,6 +107,12 @@ bool dma_buffer::alloc(size_t size) {
     m_mem.phy = phy;
     m_mem.vir = vir;
     m_mem.size = dma_buffer_size;
+    m_mem.cached = cached;
+    if (cached) {
+        m_mem.flush = std::bind(&dma_buffer::flush, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+        m_mem.invalidate = std::bind(&dma_buffer::invalidate, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+    }
+
     return true;
 }
 
@@ -102,4 +129,24 @@ void dma_buffer::free() {
 
     m_mem.phy = 0;
     m_mem.size = 0;
+}
+
+bool dma_buffer::flush(uint64_t phy, void *vir, uint32_t size) {
+    struct ax_mem_info mem = {phy, reinterpret_cast<uint64_t>(vir), size};
+    if (int ret = ::ioctl(m_fd, AX_IOC_PCIe_FLUSH_CACHED, &mem); ret < 0) {
+        LOG_MM_E(TAG, "flush dma buffer (phy {} vir {} size {}) fail, {}", phy, vir, size, ::strerror(errno));
+        return false;
+    }
+
+    return true;
+}
+
+bool dma_buffer::invalidate(uint64_t phy, void *vir, uint32_t size) {
+    struct ax_mem_info mem = {phy, reinterpret_cast<uint64_t>(vir), size};
+    if (int ret = ::ioctl(m_fd, AX_IOC_PCIe_INVALID_CACHED, &mem); ret < 0) {
+        LOG_MM_E(TAG, "invalidate dma buffer (phy {} vir {} size {}) fail, {}", phy, vir, size, ::strerror(errno));
+        return false;
+    }
+
+    return true;
 }

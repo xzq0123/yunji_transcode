@@ -540,7 +540,9 @@ static int ax_pcie_slave_irq_to_host(struct axera_dev *ax_dev, unsigned int irq_
 static void host_reset_slave_device(struct axera_dev *ax_dev)
 {
 	int sz;
+#ifndef IS_THIRD_PARTY_PLATFORM
 	unsigned long flags;
+#endif
 
 	if (!ax_dev) {
 		axera_trace(AXERA_ERR,
@@ -592,12 +594,14 @@ static int ax_pcie_host_irq_to_slave(struct axera_dev *ax_dev)
 	int timeout = 10;
 	unsigned int infor_data, data_reg, regno;
 	static volatile int mailbox_fromid = CPU0_MASTERID;
+#ifndef IS_THIRD_PARTY_PLATFORM
 	unsigned long flags;
+#endif
 
 	if (!ax_dev) {
 		axera_trace(AXERA_ERR,
 			    "host irq to slave fail, pcie dev does not exist!");
-		return -3;
+		return -4;
 	}
 
 	if (mailbox_requst_count_check(ax_dev))
