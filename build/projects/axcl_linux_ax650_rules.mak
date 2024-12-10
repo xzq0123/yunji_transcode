@@ -8,9 +8,6 @@ CFLAGS		+= -Werror -Wunused-function
 CFLAGS      += -D__AX_HIGH_PRECISION_CLOCK__
 CFLAGS      += -DAXCL_CMA_CACHED
 
-# CPPFLAGS  += -D$(PROJECT) -D$(CHIP_NAME)
-# CFLAGS    += -D$(PROJECT) -D$(CHIP_NAME)
-
 ifeq ($(ARCH),arm)
 CFLAGS		+= -Wno-psabi
 endif

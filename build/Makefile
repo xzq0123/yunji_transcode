@@ -3,13 +3,11 @@ AXCL_HOME_PATH  ?= $(abspath $(dir $(CUR_PATH))..)
 
 include $(CUR_PATH)/config.mak
 
-COMPILE_TIME   := $(shell date +"%Y%m%d%H%M")
 TARGET_PATH	   := $(AXCL_HOME_PATH)/out/$(NAME)_$(OS)_${HOST}
 
 # Base dir
 THIRD_PATH     := $(AXCL_HOME_PATH)/3rdparty
 SAMPLE_PATH    := $(AXCL_HOME_PATH)/sample
-DRV_PATH       := $(AXCL_HOME_PATH)/drv
 
 SUBDIRS        += $(THIRD_PATH) \
                   $(SAMPLE_PATH)

@@ -7,9 +7,6 @@ CFLAGS		+= -DCOMPILER_HOSTNAME=$(COMPILER_HOSTNAME_STR)
 CFLAGS		+= -DCOMPILER_USERNAME=$(COMPILER_USERNAME_STR)
 # CFLAGS		+= -Werror -Wunused-function
 
-# CPPFLAGS  += -D$(PROJECT) -D$(CHIP_NAME)
-# CFLAGS    += -D$(PROJECT) -D$(CHIP_NAME)
-
 ifeq ($(ARCH),arm)
 CFLAGS		+= -Wno-psabi
 endif

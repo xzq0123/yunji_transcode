@@ -17,9 +17,9 @@ endif
 #	prepare param
 ################################################################################
 CUR_PATH                  := $(shell pwd)
-HOME_PATH                 := $(abspath $(CUR_PATH)/../..)
+HOME_PATH                 := $(abspath $(CUR_PATH)/..)
 
-include $(HOME_PATH)/axcl/build/config.mak
+include $(HOME_PATH)/build/config.mak
 
 ################################################################################
 #	set task
