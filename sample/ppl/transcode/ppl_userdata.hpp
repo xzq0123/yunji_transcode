@@ -29,7 +29,7 @@ struct ppl_user_data {
     ffmpeg_demuxer demuxer;
     AX_PAYLOAD_TYPE_E payload;
 
-    static ppl_user_data *alloc(const char *dump_fpath) {
+    static ppl_user_data *alloc(int32_t dump) {
         ppl_user_data *p = (ppl_user_data *)malloc(sizeof(ppl_user_data));
         if (!p) {
             return nullptr;
@@ -43,9 +43,9 @@ struct ppl_user_data {
         p->ivps = -1;
         p->venc = -1;
         p->frame_count = 0;
-        if (dump_fpath) {
+        if (dump) {
             char name[256];
-            sprintf(name, "%s.dump.pid%d", dump_fpath, (uint32_t)p->pid);
+            sprintf(name, "output.dump.pid%d", (uint32_t)p->pid);
             p->fp = fopen(name, "wb");
         } else {
             p->fp = nullptr;

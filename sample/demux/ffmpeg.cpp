@@ -262,7 +262,7 @@ int ffmpeg_start_demuxer(ffmpeg_demuxer demuxer) {
     context->demux_thread.start(name, ffmpeg_demux_thread, context);
 
     sprintf(name, "rtmp%d", context->cookie);
-    context->sync_thread.start(name, ffmpeg_rtmp_thread, context);
+    context->rtmp_thread.start(name, ffmpeg_rtmp_thread, context);
     return 0;
 }
 
@@ -278,8 +278,8 @@ int ffmpeg_stop_demuxer(ffmpeg_demuxer demuxer) {
     context->dispatch_thread.stop();
     context->dispatch_thread.join();
 
-    context->sync_thread.stop();
-    context->sync_thread.join();
+    context->rtmp_thread.stop();
+    context->rtmp_thread.join();
 
     return 0;
 }
@@ -657,7 +657,7 @@ static void ffmpeg_rtmp_thread(ffmpeg_context *context) {
             }
             avpkt->data = nalu_v.nalu;
             avpkt->size = nalu_v.len;
-            SAMPLE_LOG_I("peek size %d  %d---", avpkt->size, nalu_v.pts);
+            SAMPLE_LOG_I("peek size %d  %ld---", avpkt->size, nalu_v.pts);
 
             context->fifo_v->skip(total_len);
 
