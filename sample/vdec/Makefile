@@ -1,8 +1,8 @@
 CUR_PATH                  := $(shell pwd)
 SRC_PATH                  := $(CUR_PATH)
-HOME_PATH                 := $(abspath $(CUR_PATH)/../../..)
+HOME_PATH                 := $(abspath $(CUR_PATH)/../..)
 
-include $(HOME_PATH)/axcl/build/config.mak
+include $(HOME_PATH)/build/config.mak
 
 FFMPEG_LIB_PATH           := $(AXCL_HOME_PATH)/3rdparty/ffmpeg/$(ARCH)/lib
 FFMPEG_INC_PATH           := $(AXCL_HOME_PATH)/3rdparty/ffmpeg/$(ARCH)/include

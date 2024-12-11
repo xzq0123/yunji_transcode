@@ -1,13 +1,14 @@
-SUBDIRS = pcie
+SUBDIRS = host_dev msg mmb axcl_host
+
+CURDIR = drv
 
 ################################################################################
 #	prepare param
 ################################################################################
-CUR_PATH                  := $(shell pwd)
-HOME_PATH                 := $(abspath $(CUR_PATH)/../..)
+LOCAL_PATH        := $(shell pwd)
+HOME_PATH         := $(LOCAL_PATH)/..
 
-include $(HOME_PATH)/axcl/build/config.mak
-
+include $(HOME_PATH)/build/config.mak
 ################################################################################
 #	set task
 ################################################################################
