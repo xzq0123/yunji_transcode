@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     a.add<uint32_t>("height", 'h', "output height, 0 means same as input", false, 0);
     a.add<std::string>("json", '\0', "axcl.json path", false, "./axcl.json");
     a.add<int32_t>("loop", '\0', "1: loop demux for local file  0: no loop(default)", false, 0, cmdline::oneof(0, 1));
-    a.add<std::string>("dump", '\0', "dump file path", false, "");
+    a.add<int32_t>("dump", '\0', "1: dump file  0: no dump(default)", false, 0, cmdline::oneof(0, 1));
     a.parse_check(argc, argv);
     const std::string url = a.get<std::string>("url");
     const int32_t device = a.get<int32_t>("device");
@@ -83,17 +83,17 @@ int main(int argc, char *argv[]) {
     const uint32_t height = a.get<uint32_t>("height");
     const std::string json = a.get<std::string>("json");
     int32_t loop = a.get<int32_t>("loop");
-    const std::string dump = a.get<std::string>("dump");
-    if (dump != "") {
+    int32_t dump = a.get<int32_t>("dump");
+    if (dump) {
         SAMPLE_LOG_W("if enable dump, disable loop automatically");
         loop = 0;
     }
 
     axclError ret;
     axcl_ppl ppl;
-    std::unique_ptr<ppl_user_data, decltype(&ppl_user_data::destroy)> ppl_data(ppl_user_data::alloc(dump.c_str()), &ppl_user_data::destroy);
+    std::unique_ptr<ppl_user_data, decltype(&ppl_user_data::destroy)> ppl_data(ppl_user_data::alloc(dump), &ppl_user_data::destroy);
     ppl_user_data *ppl_info = ppl_data.get();
-    ppl_info->payload = PT_H265;
+    ppl_info->payload = PT_H264;
 
     /**
      * @brief Initialize system runtime:
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
     res_guard<ffmpeg_demuxer> demuxer_holder(
         [&url, device, pid]() -> ffmpeg_demuxer {
             ffmpeg_demuxer handle;
-            ffmpeg_create_demuxer(&handle, url.c_str(), PT_H265, device, {}, 0);
+            ffmpeg_create_demuxer(&handle, url.c_str(), PT_H264, device, {}, 0);
             return handle;
         },
         [](ffmpeg_demuxer &handle) {
