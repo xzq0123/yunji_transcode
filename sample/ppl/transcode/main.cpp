@@ -66,10 +66,11 @@ static void handle_encoded_stream_callback(axcl_ppl ppl, const axcl_ppl_encoded_
 int main(int argc, char *argv[]) {
     const int32_t pid = static_cast<int32_t>(getpid());
     SAMPLE_LOG_I("============== %s sample started %s %s pid %d ==============\n", AXCL_BUILD_VERSION, __DATE__, __TIME__, pid);
-    // signal(SIGINT, handler);
+    signal(SIGINT, handler);
 
     cmdline::parser a;
     a.add<std::string>("url", 'i', "mp4|.264|.265 file path", true);
+    a.add<std::string>("rtmp_url", 'o', "rtmp url", true);
     a.add<int32_t>("device", 'd', "device id", true);
     a.add<uint32_t>("width", 'w', "output width, 0 means same as input", false, 0);
     a.add<uint32_t>("height", 'h', "output height, 0 means same as input", false, 0);
@@ -78,6 +79,7 @@ int main(int argc, char *argv[]) {
     a.add<int32_t>("dump", '\0', "1: dump file  0: no dump(default)", false, 0, cmdline::oneof(0, 1));
     a.parse_check(argc, argv);
     const std::string url = a.get<std::string>("url");
+    const std::string rtmp_url = a.get<std::string>("rtmp_url");
     const int32_t device = a.get<int32_t>("device");
     const uint32_t width = a.get<uint32_t>("width");
     const uint32_t height = a.get<uint32_t>("height");
@@ -125,9 +127,9 @@ int main(int argc, char *argv[]) {
      *    2. Retrieve stream information such as width, height, payload, fps.
      */
     res_guard<ffmpeg_demuxer> demuxer_holder(
-        [&url, device, pid]() -> ffmpeg_demuxer {
+        [&url, &rtmp_url, device, pid]() -> ffmpeg_demuxer {
             ffmpeg_demuxer handle;
-            ffmpeg_create_demuxer(&handle, url.c_str(), PT_H264, device, {}, 0);
+            ffmpeg_create_demuxer(&handle, url.c_str(), rtmp_url.c_str(), PT_H264, device, {}, 0);
             return handle;
         },
         [](ffmpeg_demuxer &handle) {

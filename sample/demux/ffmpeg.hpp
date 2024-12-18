@@ -62,7 +62,7 @@ typedef void *ffmpeg_demuxer;
  * demux mp4 video to raw h264 or h265 nalu frame.
  * raw h264 or h265 also supported.
  */
-int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, int32_t encodec, int32_t device, stream_sink sink, uint64_t userdata);
+int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, const char *rtmp_url, int32_t encodec, int32_t device, stream_sink sink, uint64_t userdata);
 int ffmpeg_destory_demuxer(ffmpeg_demuxer demuxer);
 
 const struct stream_info *ffmpeg_get_stream_info(ffmpeg_demuxer demuxer);

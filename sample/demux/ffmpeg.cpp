@@ -153,7 +153,7 @@ static void ffmpeg_dispatch_thread(ffmpeg_context *context);
 static void ffmpeg_sync_thread(ffmpeg_context *context);
 static void ffmpeg_rtmp_thread(ffmpeg_context *context);
 
-int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, int32_t encodec, int32_t device, stream_sink sink, uint64_t userdata) {
+int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, const char *rtmp_url, int32_t encodec, int32_t device, stream_sink sink, uint64_t userdata) {
     if (!url || device <= 0 || !demuxer) {
         SAMPLE_LOG_E("invalid parameters");
         return -EINVAL;
@@ -167,7 +167,8 @@ int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, int32_t enco
 
     context->url = url;
     context->mp4_file = "output.mp4";
-    context->rtmp_url = "rtmp://192.168.0.134:1935/live/test";
+    // context->rtmp_url = "rtmp://192.168.0.134:1935/live/test";
+    context->rtmp_url = rtmp_url;
 
     switch (encodec) {
         case PT_H264:
@@ -657,7 +658,7 @@ static void ffmpeg_rtmp_thread(ffmpeg_context *context) {
             }
             avpkt->data = nalu_v.nalu;
             avpkt->size = nalu_v.len;
-            SAMPLE_LOG_I("peek size %d  %ld---", avpkt->size, nalu_v.pts);
+            // SAMPLE_LOG_I("peek size %d  %ld---", avpkt->size, nalu_v.pts);
 
             context->fifo_v->skip(total_len);
 
@@ -704,7 +705,7 @@ static void ffmpeg_rtmp_thread(ffmpeg_context *context) {
 
         // print to screen
         if (avpkt->stream_index == context->video_track_id) {
-            fprintf(stdout, "Send %8d video frames to output URL\n", frame_idx);
+            // fprintf(stdout, "Send %8d video frames to output URL\n", frame_idx);
             frame_idx++;
         } else if (avpkt->stream_index == context->audio_track_id) {
             fprintf(stdout, "Send %8d audio frames to output URL\n", audio_idx);

@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
     /* step03: create ffmpeg demuxers */
     for (int32_t i = 0; i < count; ++i) {
         const AX_VDEC_GRP grp = static_cast<AX_VDEC_GRP>(i);
-        if (0 != ffmpeg_create_demuxer(&demuxers[i], url.c_str(), grp, device_id, {on_receive_demux_stream_data}, 0)) {
+        if (0 != ffmpeg_create_demuxer(&demuxers[i], url.c_str(), url.c_str(), grp, device_id, {on_receive_demux_stream_data}, 0)) {
             axclrtResetDevice(device_id);
             axclFinalize();
             return -1;
