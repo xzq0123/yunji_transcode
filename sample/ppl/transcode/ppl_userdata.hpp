@@ -45,7 +45,7 @@ struct ppl_user_data {
         p->frame_count = 0;
         if (dump) {
             char name[256];
-            sprintf(name, "output.dump.pid%d", (uint32_t)p->pid);
+            sprintf(name, "dump.pid%d", (uint32_t)p->pid);
             p->fp = fopen(name, "wb");
         } else {
             p->fp = nullptr;
