@@ -288,7 +288,7 @@ static axcl_ppl_transcode_param get_transcode_ppl_param_from_stream(const struct
     transcode_param.vdec.payload = info->video.payload;
     transcode_param.vdec.width = info->video.width;
     transcode_param.vdec.height = info->video.height;
-    transcode_param.vdec.output_order = AX_VDEC_OUTPUT_ORDER_DEC;
+    transcode_param.vdec.output_order = AX_VDEC_OUTPUT_ORDER_DISP;
 
     /**
      * AX_VDEC_DISPLAY_MODE_PREVIEW :  pull-streaming such as RTSP
