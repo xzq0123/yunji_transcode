@@ -662,6 +662,7 @@ static void ffmpeg_rtmp_thread(ffmpeg_context *context) {
             avpkt->data = nalu_v.nalu;
             avpkt->size = nalu_v.len;
             video_time = av_q2d(context->src_video->time_base) * (int64_t)nalu_v.pts;
+            avpkt->stream_index = context->video_track_id;
             // SAMPLE_LOG_I("Video Seconds PTS = %f, PTS = %ld", video_time, avpkt->pts);
 
             context->fifo_v->skip(total_len);
@@ -676,6 +677,7 @@ static void ffmpeg_rtmp_thread(ffmpeg_context *context) {
                 audio_time = av_q2d(context->src_audio->time_base) * avpkt->pts;
                 // SAMPLE_LOG_D("Audio Seconds PTS = %f, PTS = %ld", audio_time, avpkt->pts);
             }
+            avpkt->stream_index = context->audio_track_id;
 
             if (video_time < audio_time)
                 v_flag = 0;
@@ -725,10 +727,15 @@ static void ffmpeg_rtmp_thread(ffmpeg_context *context) {
             // fprintf(stdout, "Send %8d audio frames to output URL\n", audio_idx);
             audio_idx++;
         }
+        if (context->avfmt_in_ctx->nb_streams > 2) {
+            avpkt->stream_index -= 1;
+        }
 
         ret = av_interleaved_write_frame(context->avfmt_rtmp_ctx, avpkt);
         if (ret < 0) {
-            fprintf(stderr, "Error muxing packet, error code:%d\n", ret);
+            char err_msg[128] = {0};
+            av_strerror(ret, err_msg, sizeof(err_msg));
+            fprintf(stderr, "av_interleaved_write_frame: %s\n", err_msg);
             break;
         }
         av_packet_unref(avpkt);
@@ -786,18 +793,12 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
             break;
         }
 
-        context->video_track_id = av_find_best_stream(context->avfmt_in_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
-        SAMPLE_LOG_I("%s video_index = %d", context->url.c_str(), context->video_track_id);
-
-        context->audio_track_id = av_find_best_stream(context->avfmt_in_ctx, AVMEDIA_TYPE_AUDIO, -1, -1, NULL, 0);
-        SAMPLE_LOG_I("%s audio_index = %d", context->url.c_str(), context->audio_track_id);
-
         for (unsigned int i = 0; i < context->avfmt_in_ctx->nb_streams; i++) {
             SAMPLE_LOG_I("[nb_streams %d] type of the encoded data: %d", i, context->avfmt_in_ctx->streams[i]->codecpar->codec_id);
             if (AVMEDIA_TYPE_VIDEO == context->avfmt_in_ctx->streams[i]->codecpar->codec_type) {
                 context->video_track_id = i;
                 context->src_video = context->avfmt_in_ctx->streams[i];  // 保存视频的时间基
-                SAMPLE_LOG_I("the video frame pixels: width: %d, height: %d, pixel format: %d\n",
+                SAMPLE_LOG_I("[input %d] the video frame pixels: width: %d, height: %d, pixel format: %d\n", i,
                              context->avfmt_in_ctx->streams[i]->codecpar->width, context->avfmt_in_ctx->streams[i]->codecpar->height,
                              context->avfmt_in_ctx->streams[i]->codecpar->format);
 
@@ -815,7 +816,7 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
             } else if (AVMEDIA_TYPE_AUDIO == context->avfmt_in_ctx->streams[i]->codecpar->codec_type) {
                 context->audio_track_id = i;
                 context->src_audio = context->avfmt_in_ctx->streams[i];  // 保存音频的时间基
-                SAMPLE_LOG_I("audio sample format: %d\n", context->avfmt_in_ctx->streams[i]->codecpar->format);
+                SAMPLE_LOG_I("[input %d] audio sample format: %d\n", i, context->avfmt_in_ctx->streams[i]->codecpar->format);
 
                 context->dest_audio = avformat_new_stream(context->avfmt_mp4_ctx, NULL);
                 if (!context->dest_audio) {
@@ -831,22 +832,42 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
         }
 
         for (unsigned int i = 0; i < context->avfmt_in_ctx->nb_streams; i++) {
-            AVStream *in_stream = context->avfmt_in_ctx->streams[i];
-            AVStream *out_stream = avformat_new_stream(context->avfmt_rtmp_ctx, context->avfmt_in_ctx->video_codec);
-            if (!out_stream) {
-                fprintf(stderr, "Failed to allocating output stream\n");
-                ret = AVERROR_UNKNOWN;
-                break;
-            }
+            if (AVMEDIA_TYPE_VIDEO == context->avfmt_in_ctx->streams[i]->codecpar->codec_type) {
+                AVStream *in_stream = context->avfmt_in_ctx->streams[i];
+                AVStream *out_stream = avformat_new_stream(context->avfmt_rtmp_ctx, NULL);
+                if (!out_stream) {
+                    fprintf(stderr, "Failed to allocating output stream\n");
+                    ret = AVERROR_UNKNOWN;
+                    break;
+                }
 
-            ret = avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar);
-            if (ret < 0) {
-                fprintf(stderr, "Failed to copy context from input to output stream codec context\n");
-                break;
-            }
+                ret = avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar);
+                if (ret < 0) {
+                    fprintf(stderr, "Failed to copy context from input to output stream codec context\n");
+                    break;
+                }
 
-            out_stream->codecpar->codec_tag = 0;
+                out_stream->codecpar->codec_tag = 0;
+                context->avfmt_rtmp_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+            } else if (AVMEDIA_TYPE_AUDIO == context->avfmt_in_ctx->streams[i]->codecpar->codec_type) {
+                AVStream *in_stream = context->avfmt_in_ctx->streams[i];
+                AVStream *out_stream = avformat_new_stream(context->avfmt_rtmp_ctx, NULL);
+                if (!out_stream) {
+                    fprintf(stderr, "Failed to allocating output stream\n");
+                    ret = AVERROR_UNKNOWN;
+                    break;
+                }
+
+                ret = avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar);
+                if (ret < 0) {
+                    fprintf(stderr, "Failed to copy context from input to output stream codec context\n");
+                    break;
+                }
+
+                out_stream->codecpar->codec_tag = 0;
+            }
         }
+        av_dump_format(context->avfmt_rtmp_ctx, 0, context->rtmp_url.c_str(), 1);
 
         if (-1 == context->video_track_id) {
             ret = -EINVAL;
