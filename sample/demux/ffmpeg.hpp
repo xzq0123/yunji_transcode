@@ -22,6 +22,7 @@ struct video_stream {
     uint8_t *data;
     uint32_t size;
     uint64_t pts;
+    uint64_t dts;
     uint64_t seq_num;
 };
 
@@ -86,5 +87,4 @@ int ffmpeg_set_demuxer_sink(ffmpeg_demuxer demuxer, stream_sink sink, uint64_t u
  */
 int ffmpeg_set_demuxer_attr(ffmpeg_demuxer demuxer, const char *name, const void *attr);
 
-int ffmpeg_push_video_packet(ffmpeg_demuxer demuxer, AVPacket packet);
 int ffmpeg_push_video_nalu(ffmpeg_demuxer demuxer, nalu_data *nalu);
