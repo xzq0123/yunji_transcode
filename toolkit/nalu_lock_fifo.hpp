@@ -26,6 +26,7 @@ struct nalu_data {
     uint32_t len2;
     uint32_t type;
     uint64_t pts;
+    uint64_t dts;
     uint64_t userdata;
 };
 
@@ -36,6 +37,7 @@ class nalu_lock_fifo final {
         uint32_t total_len;
         uint32_t len;
         uint64_t pts;
+        uint64_t dts;
         uint64_t userdata;
         uint32_t type;
         uint32_t reserved;
@@ -71,6 +73,7 @@ public:
         meta.len = nalu.len;
         meta.type = nalu.type;
         meta.pts = nalu.pts;
+        meta.dts = nalu.dts;
         meta.userdata = nalu.userdata;
 
         std::unique_lock<std::mutex> lock(m_mtx);
@@ -138,6 +141,7 @@ public:
         }
 
         nalu.pts = meta.pts;
+        nalu.dts = meta.dts;
         nalu.type = meta.type;
         nalu.userdata = meta.userdata;
         nalu.nalu = reinterpret_cast<uint8_t*>(ele.buf[0].buf);

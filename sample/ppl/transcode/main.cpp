@@ -324,7 +324,6 @@ static axcl_ppl_transcode_param get_transcode_ppl_param_from_stream(const struct
     return transcode_param;
 }
 
-
 //这个回调就是ffmpeg解码之后的回调。
 static void handle_down_streaming_nalu_frame(const struct stream_data *nalu, uint64_t userdata) {
     ppl_user_data *ppl_info = reinterpret_cast<ppl_user_data *>(userdata);
@@ -333,7 +332,7 @@ static void handle_down_streaming_nalu_frame(const struct stream_data *nalu, uin
     stream.nalu = nalu->video.data;
     stream.nalu_len = nalu->video.size;
     stream.pts = nalu->video.pts;
-    stream.userdata = userdata;
+    stream.userdata = nalu->video.dts;
     if (axclError ret = axcl_ppl_send_stream(ppl_info->ppl, &stream, 1000); AXCL_SUCC != ret) {
         if (AXCL_ERR_LITE_PPL_NOT_STARTED != ret) {
             SAMPLE_LOG_E("axcl_ppl_send_stream(pid: %d) fail, ret = 0x%x", static_cast<uint32_t>(ppl_info->pid), ret);
@@ -355,6 +354,7 @@ static void handle_encoded_stream_callback(axcl_ppl ppl, const axcl_ppl_encoded_
 
     nalu_data nalu = {};
     nalu.pts = stream->stPack.u64PTS;
+    nalu.dts = stream->stPack.u64UserData;
     nalu.nalu = stream->stPack.pu8Addr;
     nalu.len = stream->stPack.u32Len;
     ffmpeg_push_video_nalu(ppl_info->demuxer, &nalu);

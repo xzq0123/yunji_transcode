@@ -201,7 +201,16 @@ void ivps::set_pipline_attr(AX_IVPS_PIPELINE_ATTR_T& pipe_attr, AX_S32 chn, cons
     filter.tCropRect = chn_attr.box;
     filter.nDstPicWidth = chn_attr.width;
     filter.nDstPicHeight = chn_attr.height;
-    filter.nDstPicStride = AXCL_ALIGN_UP(chn_attr.width, 16);
+    if (0 == chn_attr.stride) {
+        if (chn_attr.fbc.enCompressMode != AX_COMPRESS_MODE_NONE) {
+            filter.nDstPicStride = AXCL_ALIGN_UP(chn_attr.width, 128);
+        } else {
+            filter.nDstPicStride = AXCL_ALIGN_UP(chn_attr.width, 16);
+        }
+        LOG_MM_W(TAG, "chn {} filter stride is 0, auto set to {}", chn, filter.nDstPicStride);
+    } else {
+        filter.nDstPicStride = chn_attr.stride;
+    }
     filter.eDstPicFormat = chn_attr.pix_fmt;
     filter.tCompressInfo = chn_attr.fbc;
     filter.bInplace = chn_attr.inplace;
