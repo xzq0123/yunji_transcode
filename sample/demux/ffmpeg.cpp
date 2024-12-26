@@ -91,9 +91,10 @@ struct ffmpeg_context {
  * check dispatch put and pop nalu data
  */
 //  #define __SAVE_NALU_DATA__
-#if defined(__SAVE_NALU_DATA__)
+#if defined(__SAVE_DEMUX_DATA__)
     FILE *fput = nullptr;
     FILE *fpop = nullptr;
+    FILE *rtmp = nullptr;
     std::vector<std::vector<uint8_t>> put_data;
 #endif
 };
@@ -365,8 +366,9 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
         return;
     }
 
-#ifdef __SAVE_NALU_DATA__
+#ifdef __SAVE_DEMUX_DATA__
     context->fput = fopen("./fput.raw", "wb");
+    context->rtmp = fopen("./rtmp.raw", "wb");
 #endif
 
     int frame_idx = 0;
@@ -427,7 +429,9 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
 
                     ++count;
 
-                    pts += interval;
+#if defined(__SAVE_DEMUX_DATA__)
+                    fwrite(avpkt->data, 1, avpkt->size, context->fput);
+#endif
 
                     nalu_data nalu = {};
                     nalu.userdata = context->userdata;
@@ -447,12 +451,24 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                             continue;
                         }
 
-                        avpkt->data = nalu_v.nalu;
-                        avpkt->size = nalu_v.len;
+#if defined(__SAVE_DEMUX_DATA__)
+                        fwrite(nalu_v.nalu, 1, nalu_v.len, context->rtmp);
+#endif
+
+                        uint8_t *data = nullptr;
+                        if (nalu_v.len2 > 0) {
+                            avpkt->size = nalu_v.len + nalu_v.len2;
+                            data = reinterpret_cast<uint8_t *>(malloc(avpkt->size));
+                            memcpy(data, nalu_v.nalu, nalu_v.len);
+                            memcpy(data + nalu_v.len, nalu_v.nalu2, nalu_v.len2);
+                            avpkt->data = data;
+                        } else {
+                            avpkt->size = nalu_v.len;
+                            avpkt->data = nalu_v.nalu;
+                        }
+
                         avpkt->stream_index = context->video_track_id;
                         // SAMPLE_LOG_D("Video Seconds PTS = %f, DTS = %f", av_q2d(context->src_video->time_base) * (int64_t)nalu_v.pts, av_q2d(context->src_video->time_base) * (int64_t)nalu_v.dts);
-
-                        context->fifo_v->skip(total_len);
 
                         // write pts
                         AVRational time_base1 = context->avfmt_in_ctx->streams[context->video_track_id]->time_base;
@@ -480,6 +496,12 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                         avpkt->pos = -1;
 
                         ret = av_interleaved_write_frame(context->avfmt_rtmp_ctx, avpkt);
+
+                        if (data) {
+                            free(data);
+                        }
+                        context->fifo_v->skip(total_len);
+
                         if (ret < 0) {
                             char err_msg[128] = {0};
                             av_strerror(ret, err_msg, sizeof(err_msg));
@@ -517,9 +539,12 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
         avio_closep(&context->avfmt_rtmp_ctx->pb);
     }
 
-#ifdef __SAVE_NALU_DATA__
+#ifdef __SAVE_DEMUX_DATA__
     fflush(context->fput);
     fclose(context->fput);
+
+    fflush(context->rtmp);
+    fclose(context->rtmp);
 #endif
 
     av_packet_free(&avpkt);
