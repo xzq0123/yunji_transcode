@@ -45,6 +45,7 @@ typedef struct {
     AX_IVPS_RECT_T box;
     AX_U32 width;
     AX_U32 height;
+    AX_U32 stride;
     AX_IMG_FORMAT_E pix_fmt;
     AX_FRAME_COMPRESS_INFO_T fbc;
     AX_FRAME_RATE_CTRL_T frc;

@@ -256,6 +256,7 @@ axclite_ivps_attr ppl_transcode::get_ivps_attr() {
     chn.crop = AX_FALSE;
     chn.width = m_param.venc.width;
     chn.height = m_param.venc.height;
+    chn.stride = AXCL_ALIGN_UP(chn.width, 256);
     chn.pix_fmt = AX_FORMAT_YUV420_SEMIPLANAR;
     chn.fbc.enCompressMode = AX_COMPRESS_MODE_LOSSY;
     chn.fbc.u32CompressLevel = 4;
