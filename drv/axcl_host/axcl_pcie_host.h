@@ -15,7 +15,8 @@
 #define IOC_AXCL_DEVICE_RESET	_IOWR(IOC_AXCL_MAGIC, 6, struct axcl_device_info)
 #define IOC_AXCL_DEVICE_BOOT    _IOWR(IOC_AXCL_MAGIC, 7, struct axcl_device_info)
 #define IOC_AXCL_BUS_INFO       _IOWR(IOC_AXCL_MAGIC, 8, struct axcl_bus_info_t)
-#define IOC_AXCL_PID_INFO       _IOWR(IOC_AXCL_MAGIC, 9, struct axcl_pid_info_t)
+#define IOC_AXCL_PID_NUM     	_IOWR(IOC_AXCL_MAGIC, 9, struct axcl_pid_num_t)
+#define IOC_AXCL_PID_INFO    	_IOWR(IOC_AXCL_MAGIC, 10, struct axcl_pid_info_t)
 
 #define AXCL_PROCESS_MAX    (64)
 #define AXCL_RECV_TIMEOUT   (50000)
@@ -61,7 +62,6 @@
 #define AXCL_BASE_PORT  21
 #define AXCL_HEARTBEAT_PORT   (10)
 #define AXCL_NOTIFY_PORT   (11)
-#define AXCL_PROC_PORT  (12)
 
 typedef struct _PAC_HEAD_T {
 	u32 nMagic;
@@ -108,22 +108,6 @@ enum heartbeat_type {
 	AXCL_HEARTBEAT_ALIVE = 1,
 };
 
-enum proc_cmd {
-	AXCL_GET_RPOC_FILE_NUM = 1,
-	AXCL_GET_PROC_FILE = 2,
-	AXCL_READ_PROC = 3,
-	AXCL_WRITE_PROC = 4,
-	AXCL_WRITE_PROC_FAIL = 5,
-};
-
-struct axcl_proc_info {
-	int cmd;
-	int size;
-	int filenum;
-	char name[60];
-	char data[16];
-};
-
 struct device_list_t {
 	unsigned int type;	/* 0: pcie */
 	unsigned int num;	/* device connected num */
@@ -137,16 +121,15 @@ struct axcl_bus_info_t {
 	unsigned int func;
 };
 
+struct axcl_pid_num_t {
+	unsigned int device;
+	unsigned int num;
+};
+
 struct axcl_pid_info_t {
 	unsigned int device;
 	unsigned int num;
-	unsigned int pid[AXCL_PROCESS_MAX];
-};
-
-struct process_wait {
-	unsigned int pid;
-	atomic_t event;
-	wait_queue_head_t wait;
+	unsigned long pid;
 };
 
 struct device_heart_packet {
@@ -175,11 +158,25 @@ struct ax_mem_list {
 	unsigned int data_len;
 };
 
-struct axcl_proc_file {
-	int dir;
-	char parent[50];
-	char name[20];
-	struct proc_dir_entry *entry;
+struct device_handle_t {
+	unsigned int cmd;	/* 1: create; 2: destroy */
+	unsigned int device;
+	unsigned int pid;
+	unsigned int port_num;
+	unsigned int ports[AXCL_MAX_PORT];
+	struct list_head head;
+};
+
+struct process_info_t {
+	struct list_head head;
+	struct list_head dev_list;
+	unsigned int pid;
+	atomic_t event;
+	wait_queue_head_t wait;
+};
+
+struct axcl_handle_t {
+	struct list_head process_list;
 };
 
 #define AXCL_DEBUG		4
@@ -194,8 +191,6 @@ struct axcl_proc_file {
 
 extern ax_pcie_msg_handle_t *port_handle[AXERA_MAX_MAP_DEV][MAX_MSG_PORTS];
 
-extern void axcl_pcie_proc_remove(void);
-extern int axcl_pcie_proc_create(void);
 extern int axcl_pcie_msg_send(struct ax_transfer_handle *handle, void *kbuf,
 			      unsigned int count);
 extern int axcl_pcie_recv_timeout(ax_pcie_msg_handle_t *handle, void *buf,

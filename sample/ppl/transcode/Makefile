@@ -15,7 +15,7 @@ AXCL_PPL_PATH             := $(AXCL_SAMPLE_PATH)/ppl
 
 MSP_LIB_PATH              := $(HOME_PATH)/msp/out/lib
 
-FFMPEG_LIB_PATH           := $(AXCL_HOME_PATH)/3rdparty/ffmpeg/$(ARCH)/lib
+FFMPEG_LIB_PATH           := $(AXCL_LIB_PATH)/ffmpeg
 FFMPEG_INC_PATH           := $(AXCL_HOME_PATH)/3rdparty/ffmpeg/$(ARCH)/include
 
 # output

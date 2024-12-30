@@ -52,6 +52,32 @@ typedef enum axclrtEngineVNpuKind {
     AXCL_VNPU_LITTLE_BIG = 3,
 } axclrtEngineVNpuKind;
 
+typedef enum axclrtEngineDataType {
+    AXCL_DATA_TYPE_NONE = 0,
+    AXCL_DATA_TYPE_INT4 = 1,
+    AXCL_DATA_TYPE_UINT4 = 2,
+    AXCL_DATA_TYPE_INT8 = 3,
+    AXCL_DATA_TYPE_UINT8 = 4,
+    AXCL_DATA_TYPE_INT16 = 5,
+    AXCL_DATA_TYPE_UINT16 = 6,
+    AXCL_DATA_TYPE_INT32 = 7,
+    AXCL_DATA_TYPE_UINT32 = 8,
+    AXCL_DATA_TYPE_INT64 = 9,
+    AXCL_DATA_TYPE_UINT64 = 10,
+    AXCL_DATA_TYPE_FP4 = 11,
+    AXCL_DATA_TYPE_FP8 = 12,
+    AXCL_DATA_TYPE_FP16 = 13,
+    AXCL_DATA_TYPE_BF16 = 14,
+    AXCL_DATA_TYPE_FP32 = 15,
+    AXCL_DATA_TYPE_FP64 = 16,
+} axclrtEngineDataType;
+
+typedef enum axclrtEngineDataLayout {
+    AXCL_DATA_LAYOUT_NONE = 0,
+    AXCL_DATA_LAYOUT_NHWC = 0,
+    AXCL_DATA_LAYOUT_NCHW = 1,
+} axclrtEngineDataLayout;
+
 typedef struct axclrtEngineIODims {
     int32_t dimCount;
     int32_t dims[AXCLRT_ENGINE_MAX_DIM_CNT];

@@ -20,7 +20,7 @@ EXTRA_CFLAGS            += -I$(AXCL_PCIE_PATH)/include \
 
 ccflags-y               += -DAXCL_MODULE_NAME=\"$(MODULE_NAME)\"
 
-SRCS                    := axcl_pcie_host.c axcl_pcie_proc.c version.c
+SRCS                    := axcl_pcie_host.c version.c
 
 $(MODULE_NAME)-objs     := $(SRCS:%.c=%.o)
 

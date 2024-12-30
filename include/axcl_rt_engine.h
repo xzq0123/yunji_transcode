@@ -26,7 +26,7 @@ extern "C" {
  * function
  *
  * @par Restriction
- * User needs to call axclrtEngineInit to finalize the runtime
+ * User needs to call axclrtEngineFinalize to finalize the runtime
  * engine after using it
  *
  * @param npuKind [IN]     Initialize the runtime engine with
@@ -42,7 +42,7 @@ axclError axclrtEngineInit(axclrtEngineVNpuKind npuKind);
  * @brief Get visual NPU kind
  *
  * @par Function
- * Get the runtime engine visual NPU inited kind
+ * Get the initialized VNPU type of the runtime engine
  *
  * @param npuKind [OUT]      VNPU type
  *
@@ -73,9 +73,8 @@ axclError axclrtEngineFinalize();
  * and manage memory internally by the system
  *
  * @par Function
- * After the system finishes loading the model,
- * the model ID returned is used as a mark to identify the model
- * during subsequent operations
+ * After the system finishes loading the model, the returned model ID
+ * is used to identify the model during subsequent operations
  *
  * @param modelPath [IN]     Storage path for offline model files
  * @param modelId [OUT]      Model ID generated after
@@ -92,13 +91,12 @@ axclError axclrtEngineLoadFromFile(const char *modelPath, uint64_t *modelId);
  * model running internally by the system
  *
  * @par Function
- * After the system finishes loading the model,
- * the model ID returned is used as a mark to identify the model
- * during subsequent operations
+ * After the system finishes loading the model, the returned model ID
+ * is used to identify the model during subsequent operations
  *
  * @par Restriction
- * The model memory is Device memory,
- * and requires user application and release.
+ * The model memory is device memory, and requires user allocation
+ * and release
  *
  * @param model [IN]         Model data stored in memory
  * @param modelSize [IN]     Model data size
@@ -140,8 +138,8 @@ const char* axclrtEngineGetModelCompilerVersion(uint64_t modelId);
  * Set npu affinity for context
  *
  * @par Restriction
- * Zero is not allowed, and the masked bit of set
- * cannot out of affinity range.
+ * Zero is not allowed, and the masked bit of the set
+ * cannot be out of the affinity range.
  *
  * @param  modelId [IN]      Model id
  * @param  set [OUT]         The affinity set
@@ -172,8 +170,8 @@ axclError axclrtEngineGetAffinity(uint64_t modelId, axclrtEngineSet *set);
  * @brief Get memory usage
  *
  * @par Function
- * Get the system memory size and CMM memory size
- * required for model execution according to the model file
+ * Get the system memory size and CMM memory size required for model execution
+ * based on the model file
  *
  * @param  modelPath [IN]     Model path to get memory information
  * @param  sysSize [OUT]     The amount of working system memory for model executed
@@ -189,12 +187,13 @@ axclError axclrtEngineGetUsage(const char *modelPath, int64_t *sysSize, int64_t 
  * @brief Get memory usage
  *
  * @par Function
- * Get the system memory size and CMM memory size
- * required for model execution according the model data in memory
+ * Get the system memory size and CMM memory size required for model execution
+ * based on the model data in memory
  *
  * @par Restriction
  * The model memory is Device memory,
  * and requires user application and release.
+ *
  * @param  model [IN]        Model memory which user manages
  * @param  modelSize [IN]    Model data size
  * @param  sysSize [OUT]     The amount of working system memory for model executed
@@ -242,7 +241,7 @@ axclError axclrtEngineGetModelType(const char *modelPath, axclrtEngineModelKind 
  * @brief Get model type
  *
  * @par Function
- * Get the type of model according to the model data in memory
+ * Get the type of model based on the model data in memory
  *
  * @par Restriction
  * The model memory is Device memory,
@@ -443,6 +442,66 @@ int32_t axclrtEngineGetOutputIndexByName(axclrtEngineIOInfo ioInfo, const char *
  * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumInputs
 **/
 axclError axclrtEngineGetInputDims(axclrtEngineIOInfo ioInfo, uint32_t group, uint32_t index, axclrtEngineIODims *dims);
+
+/**
+ * @ingroup AxeraCL Runtime
+ * @brief get input data type
+ *
+ * @param ioInfo [IN]        axclrtEngineIOInfo pointer
+ * @param index [IN]         input io index
+ * @param type [IN]          input IO data type
+ *
+ * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumInputs
+**/
+int32_t axclrtEngineGetInputDataType(axclrtEngineIOInfo ioInfo, uint32_t index, axclrtEngineDataType *type);
+
+/**
+ * @ingroup AxeraCL Runtime
+ * @brief get output data type
+ *
+ * @param ioInfo [IN]        axclrtEngineIOInfo pointer
+ * @param index [IN]         output io index
+ * @param type [IN]          output IO data type
+ *
+ * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumOutputs
+**/
+int32_t axclrtEngineGetOutputDataType(axclrtEngineIOInfo ioInfo, uint32_t index, axclrtEngineDataType *type);
+
+/**
+ * @ingroup AxeraCL Runtime
+ * @brief get input data layout
+ *
+ * @param ioInfo [IN]        axclrtEngineIOInfo pointer
+ * @param index [IN]         input io index
+ * @param layout [IN]        input IO data layout
+ *
+ * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumInputs
+**/
+int32_t axclrtEngineGetInputDataLayout(axclrtEngineIOInfo ioInfo, uint32_t index, axclrtEngineDataLayout *layout);
+
+/**
+ * @ingroup AxeraCL Runtime
+ * @brief get output data layout
+ *
+ * @param ioInfo [IN]        axclrtEngineIOInfo pointer
+ * @param index [IN]         output io index
+ * @param layout [IN]        output IO data layout
+ *
+ * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumOutputs
+**/
+int32_t axclrtEngineGetOutputDataLayout(axclrtEngineIOInfo ioInfo, uint32_t index, axclrtEngineDataLayout *layout);
 
 /**
  * @ingroup AxeraCL Runtime
@@ -685,7 +744,7 @@ axclError axclrtEngineExecute(uint64_t modelId, uint64_t contextId, uint32_t gro
 
 /**
  * @ingroup AxeraCL Runtime
- * @brief Execute model asynchronous inference until the inference result is returned
+ * @brief Execute model asynchronous inference
  *
  * @param  modelId [IN]      Model id
  * @param  contextId [IN]    Model inference context

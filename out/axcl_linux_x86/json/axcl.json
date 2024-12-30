@@ -1,0 +1,13 @@
+{
+	"log": {
+		"host": {
+			"path": "/tmp/axcl/axcl_logs.txt",
+			"//   ": "0: trace, 1: debug, 2: info, 3: warn, 4: error, 5: critical, 6: off",
+			"level": 2
+		},
+		"device": {
+			"//   ": "0: trace, 1: debug, 2: info, 3: warn, 4: error, 5: critical, 6: off",
+			"level": 2
+		}
+	}
+}

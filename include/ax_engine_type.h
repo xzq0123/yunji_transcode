@@ -143,7 +143,7 @@ typedef struct _AX_ENGINE_IOMETA_T
      * eg. index[0:3] shape[n,h,w,c] stride[hwc,wc,c,1]
      */
     AX_S32 *pStride;
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(__x86_64__)
     AX_U64 u64Reserved[9];
 #elif defined(__arm__)
     AX_U64 u64Reserved[11];
@@ -158,7 +158,7 @@ typedef struct _AX_ENGINE_IO_INFO_T
     AX_U32 nOutputSize;
     AX_U32 nMaxBatchSize;  // 0 for unlimited
     AX_BOOL bDynamicBatchSize;  // if true, any batch size <= nMaxBatchSize is supported
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(__x86_64__)
     AX_U64 u64Reserved[11];
 #elif defined(__arm__)
     AX_U64 u64Reserved[13];
@@ -180,7 +180,7 @@ typedef struct _AX_ENGINE_IO_BUFFER_T
      */
     AX_S32 *pStride;
     AX_U8 nStrideSize;
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(__x86_64__)
     AX_U64 u64Reserved[11];
 #elif defined(__arm__)
     AX_U64 u64Reserved[13];
@@ -202,7 +202,7 @@ typedef struct _AX_ENGINE_IO_T
     AX_U32 nBatchSize;                  // 0 for auto detection
     AX_ENGINE_IO_SETTING_T *pIoSetting;
     AX_U32 nParallelRun;                // 0 disable parallel run
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(__x86_64__)
     AX_U64 u64Reserved[10];
 #elif defined(__arm__)
     AX_U64 u64Reserved[12];

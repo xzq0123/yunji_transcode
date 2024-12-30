@@ -1,0 +1,14 @@
+prefix=/home/tangkunpeng/12-11-ax650_trunk/axcl/3rdparty/ffmpeg/install/ffmpeg
+exec_prefix=${prefix}
+libdir=/home/tangkunpeng/12-11-ax650_trunk/axcl/3rdparty/ffmpeg/install/ffmpeg/lib
+includedir=/home/tangkunpeng/12-11-ax650_trunk/axcl/3rdparty/ffmpeg/install/ffmpeg/include
+
+Name: libpostproc
+Description: FFmpeg postprocessing library
+Version: 55.8.100
+Requires: 
+Requires.private: libavutil >= 56.58.100
+Conflicts:
+Libs: -L${libdir}  -lpostproc 
+Libs.private: -lm
+Cflags: -I${includedir}

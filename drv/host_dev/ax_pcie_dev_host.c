@@ -28,6 +28,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/sizes.h>
+#include <linux/uaccess.h>
 
 #include "../include/ax_pcie_dev.h"
 #include "../include/ax_pcie_msg_ursdev.h"

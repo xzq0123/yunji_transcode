@@ -1,7 +1,7 @@
-prefix=/home/jingxiaoping/ffmpeg-mp4/out
+prefix=/home/tangkunpeng/12-11-ax650_trunk/axcl/3rdparty/ffmpeg/install/ffmpeg
 exec_prefix=${prefix}
-libdir=/home/jingxiaoping/ffmpeg-mp4/out/lib
-includedir=/home/jingxiaoping/ffmpeg-mp4/out/include
+libdir=/home/tangkunpeng/12-11-ax650_trunk/axcl/3rdparty/ffmpeg/install/ffmpeg/lib
+includedir=/home/tangkunpeng/12-11-ax650_trunk/axcl/3rdparty/ffmpeg/install/ffmpeg/include
 
 Name: libswscale
 Description: FFmpeg image rescaling library

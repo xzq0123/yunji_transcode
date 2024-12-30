@@ -345,6 +345,8 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
     uint64_t last = 0;
     const uint64_t interval = 1000000 / context->info.video.fps;
 
+    av_dump_format(context->avfmt_rtmp_ctx, 0, context->rtmp_url.c_str(), 1);
+
     if (!(context->avfmt_rtmp_ctx->oformat->flags & AVFMT_NOFILE)) {
         ret = avio_open(&context->avfmt_rtmp_ctx->pb, context->rtmp_url.c_str(), AVIO_FLAG_WRITE);
         if (ret < 0) {
@@ -471,9 +473,9 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                         // SAMPLE_LOG_D("Video Seconds PTS = %f, DTS = %f", av_q2d(context->src_video->time_base) * (int64_t)nalu_v.pts, av_q2d(context->src_video->time_base) * (int64_t)nalu_v.dts);
 
                         // write pts
-                        AVRational time_base1 = context->avfmt_in_ctx->streams[context->video_track_id]->time_base;
+                        AVRational time_base1 = context->src_video->time_base;
                         // Duration between 2 frames (us)
-                        int64_t calc_duration = (double)AV_TIME_BASE / av_q2d(context->avfmt_in_ctx->streams[context->video_track_id]->r_frame_rate);
+                        int64_t calc_duration = (double)AV_TIME_BASE / av_q2d(context->src_video->r_frame_rate);
                         // parameters
                         // pts是播放时间戳,告诉播放器什么时候播放这一帧视频,PTS通常是按照递增顺序排列的,以保证正确的时间顺序和播放同步
                         // dts是解码时间戳,告诉播放器什么时候解码这一帧视频
@@ -756,6 +758,12 @@ int ffmpeg_set_demuxer_attr(ffmpeg_demuxer demuxer, const char *name, const void
     } else if (0 == strcmp(name, ffmpeg_demuxer_attr_file_loop)) {
         context->loop = (1 == *(reinterpret_cast<const int32_t *>(attr))) ? true : false;
         SAMPLE_LOG_I("[%d] set %s to %d", context->cookie, ffmpeg_demuxer_attr_file_loop, context->loop);
+    } else if (0 == strcmp(name, "ffmpeg.rtmp.width")) {
+        context->dest_video->codecpar->width = *(reinterpret_cast<const int *>(attr));
+        SAMPLE_LOG_I("[%d] set %s to %d", context->cookie, "ffmpeg.rtmp.width", context->dest_video->codecpar->width);
+    } else if (0 == strcmp(name, "ffmpeg.rtmp.height")) {
+        context->dest_video->codecpar->height = *(reinterpret_cast<const int *>(attr));
+        SAMPLE_LOG_I("[%d] set %s to %d", context->cookie, "ffmpeg.rtmp.height", context->dest_video->codecpar->height);
     } else {
         SAMPLE_LOG_E("[%d] unsupport attribute %s", context->cookie, name);
         return -EINVAL;

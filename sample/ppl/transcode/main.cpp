@@ -153,6 +153,9 @@ int main(int argc, char *argv[]) {
     if (width > 0 && height > 0) {
         transcode_param.venc.width = width;
         transcode_param.venc.height = height;
+
+        ffmpeg_set_demuxer_attr(demuxer, "ffmpeg.rtmp.width", (const void *)&width);
+        ffmpeg_set_demuxer_attr(demuxer, "ffmpeg.rtmp.height", (const void *)&height);
     }
 
     axcl_ppl_param ppl_param;

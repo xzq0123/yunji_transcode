@@ -17,6 +17,7 @@
 #include <linux/version.h>
 #include <linux/sysctl.h>
 #include <linux/kernel.h>
+#include <linux/uaccess.h>
 #include "../include/ax_pcie_dev.h"
 #include "../include/ax_pcie_proc.h"
 
