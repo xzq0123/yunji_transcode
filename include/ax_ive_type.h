@@ -13,6 +13,7 @@
 
 #include "ax_base_type.h"
 #include "ax_global_type.h"
+#include "ax_engine_type.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -582,6 +583,16 @@ typedef struct axIVE_NPU_MATMUL_CTRL_T {
     AX_IVE_MAU_DATA_TYPE_E enDataType;
     AX_S32 s32KSize;
 } AX_IVE_NPU_MATMUL_CTRL_T;
+
+/*
+* MatMul control parameter for NPU engine with additional Affinity setting
+*/
+typedef struct axIVE_NPU_MATMUL_CTRL_AF_T {
+    AX_CHAR *pchModelDir;
+    AX_IVE_MAU_DATA_TYPE_E enDataType;
+    AX_S32 s32KSize;
+    AX_ENGINE_NPU_SET_T  enNpuSet;
+} AX_IVE_NPU_MATMUL_CTRL_AF_T;
 
 /*
 * MatMul control parameter for MAU engine

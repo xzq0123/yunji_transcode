@@ -32,7 +32,7 @@
         return AXCL_ERR_LITE_PPL_NULL_POINTER; \
     }
 
-axclError ppl_core::init(const axcl_ppl_init_param *param) {
+axclError ppl_core::init(axcl_ppl_init_param *param) {
     std::lock_guard<std::mutex> lck(m_mtx);
     if (m_inited) {
         LOG_MM_W(TAG, "axcl ppl has been initialized!");
@@ -49,8 +49,23 @@ axclError ppl_core::init(const axcl_ppl_init_param *param) {
         return ret;
     }
 
-    if (ret = axclrtSetDevice(param->device); AXCL_SUCC != ret) {
-        LOG_MM_E(TAG, "axclrtSetDevice(device: {}) fail, ret = {:#x}", param->device, static_cast<uint32_t>(ret));
+    if (param->device <= 0) {
+        axclrtDeviceList lst;
+        if (axclError ret = axclrtGetDeviceList(&lst); AXCL_SUCC != ret || 0 == lst.num) {
+            LOG_MM_E(TAG, "no device is connected");
+            axclFinalize();
+            return ret;
+        }
+
+        m_device = lst.devices[0];
+        param->device = m_device;
+        LOG_MM_I(TAG, "device id: {}", m_device);
+    } else {
+        m_device = param->device;
+    }
+
+    if (ret = axclrtSetDevice(m_device); AXCL_SUCC != ret) {
+        LOG_MM_E(TAG, "axclrtSetDevice(device: {}) fail, ret = {:#x}", m_device, static_cast<uint32_t>(ret));
 
         axclFinalize();
         return ret;
@@ -61,12 +76,11 @@ axclError ppl_core::init(const axcl_ppl_init_param *param) {
     attr.max_vdec_grp = param->max_vdec_grp;
     attr.max_venc_thd = param->max_venc_thd;
     if (ret = MSYS()->init(attr); AXCL_SUCC != ret) {
-        axclrtResetDevice(param->device);
+        axclrtResetDevice(m_device);
         axclFinalize();
         return ret;
     }
 
-    m_device = param->device;
     m_inited = true;
     return AXCL_SUCC;
 }
@@ -166,10 +180,12 @@ axclError ppl_core::set_attr(axcl_ppl ppl, const char *name, const void *attr) {
 axclError ppl_core::check_init_param(const axcl_ppl_init_param *param) {
     CHECK_NULL_PTR(param);
 
+/*
     if (param->device <= 0) {
         LOG_MM_E(TAG, "invalid device id {}", param->device);
         return AXCL_ERR_LITE_PPL_ILLEGAL_PARAM;
     }
+*/
 
     if (param->max_vdec_grp < 1) {
         LOG_MM_E(TAG, "invalid max vdec grp num {}", param->max_vdec_grp);

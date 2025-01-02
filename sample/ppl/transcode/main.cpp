@@ -137,7 +137,12 @@ int main(int argc, char *argv[]) {
                 ffmpeg_destory_demuxer(handle);
             }
         });
+
     ffmpeg_demuxer demuxer = demuxer_holder.get();
+    if (!demuxer) {
+        axcl_ppl_deinit();
+        return 1;
+    }
 
     constexpr int32_t active_fps = 1;
     ffmpeg_set_demuxer_attr(demuxer, "ffmpeg.demux.file.frc", (const void *)&active_fps);
@@ -304,7 +309,7 @@ static axcl_ppl_transcode_param get_transcode_ppl_param_from_stream(const struct
     if (ppl_info->payload == PT_H264) {
         // H264
         transcode_param.venc.payload = ppl_info->payload;
-        transcode_param.venc.profile = AX_VENC_H264_BASE_PROFILE;
+        transcode_param.venc.profile = AX_VENC_H264_MAIN_PROFILE;
         transcode_param.venc.level = AX_VENC_H264_LEVEL_5_2;
         transcode_param.venc.gop.enGopMode = AX_VENC_GOPMODE_NORMALP;
         transcode_param.venc.rc = axcl_default_rc_h264_cbr_1080p_4096kbps;

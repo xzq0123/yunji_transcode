@@ -211,6 +211,7 @@ void ivps::set_pipline_attr(AX_IVPS_PIPELINE_ATTR_T& pipe_attr, AX_S32 chn, cons
     } else {
         filter.nDstPicStride = chn_attr.stride;
     }
+
     filter.eDstPicFormat = chn_attr.pix_fmt;
     filter.tCompressInfo = chn_attr.fbc;
     filter.bInplace = chn_attr.inplace;

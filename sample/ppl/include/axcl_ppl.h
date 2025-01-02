@@ -13,7 +13,7 @@
 
 #include "axcl_ppl_type.h"
 
-axclError axcl_ppl_init(const axcl_ppl_init_param* param);
+axclError axcl_ppl_init(axcl_ppl_init_param* param);
 axclError axcl_ppl_deinit();
 axclError axcl_ppl_create(axcl_ppl* ppl, const axcl_ppl_param* param);
 axclError axcl_ppl_start(axcl_ppl ppl);
@@ -38,6 +38,7 @@ axclError axcl_ppl_destroy(axcl_ppl ppl);
  *  axcl.ppl.transcode.ivps.engine          [R/W]       uint32_t   AX_IVPS_ENGINE_VPP      AX_IVPS_ENGINE_VPP|AX_IVPS_ENGINE_VGP|AX_IVPS_ENGINE_TDP
  *  axcl.ppl.transcode.venc.in.depth        [R/W]       uint32_t          4                in fifo depth
  *  axcl.ppl.transcode.venc.out.depth       [R/W]       uint32_t          4                out fifo depth
+ *  axcl.ppl.transcode.venc.stop.wait       [R/W]       int32_t           0                wait for milliseconds if the in/out FIFOs are not 0 before stopping. 0: stop immediately
  */
 axclError axcl_ppl_get_attr(axcl_ppl ppl, const char* name, void* attr);
 axclError axcl_ppl_set_attr(axcl_ppl ppl, const char* name, const void* attr);

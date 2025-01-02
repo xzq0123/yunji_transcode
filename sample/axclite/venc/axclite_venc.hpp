@@ -27,6 +27,8 @@ public:
     axclError start(int32_t device);
     axclError stop();
 
+    axclError query_status(AX_VENC_CHN_STATUS_T &status);
+
     axclError register_sink(sinker* sink);
     axclError unregister_sink(sinker* sink);
 

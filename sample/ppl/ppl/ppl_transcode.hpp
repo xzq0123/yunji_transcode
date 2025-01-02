@@ -56,8 +56,9 @@ private:
     uint32_t m_vdec_out_fifo_depth = 4;
     uint32_t m_ivps_in_fifo_depth = 4;
     uint32_t m_ivps_out_fifo_depth = 0;
-    uint32_t m_ivps_blk_cnt = 4;
-    uint32_t m_ivps_engine = AX_IVPS_ENGINE_VPP;
+    uint32_t m_ivps_blk_cnt = 5;
+    uint32_t m_ivps_engine = AX_IVPS_ENGINE_TDP;
     uint32_t m_venc_in_fifo_depth = 4;
     uint32_t m_venc_out_fifo_depth = 4;
+    int32_t m_venc_stop_wait_time = 0;
 };

@@ -10,10 +10,18 @@
 
 #include "ppl_transcode.hpp"
 #include <string.h>
+#include <sys/time.h>
+#include <time.h>
 #include "axclite_msys.hpp"
 #include "log/logger.hpp"
 
 #define TAG "ppl-ppl_transcode"
+
+static AX_U64 get_ms_ticks() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
 
 ppl_transcode::ppl_transcode(int32_t id, int32_t device, const axcl_ppl_transcode_param& param)
     : m_device(device), m_id(id), m_param(param), m_sink(this, param.cb, param.userdata) {
@@ -127,6 +135,23 @@ axclError ppl_transcode::stop() {
         return AXCL_SUCC;
     }
 
+    if (0 != m_venc_stop_wait_time) {
+        AX_U64 start = get_ms_ticks();
+        do {
+            AX_VENC_CHN_STATUS_T status = {};
+            if (axclError ret = m_venc->query_status(status); AXCL_SUCC != ret) {
+                return ret;
+            }
+
+            if (0 == (status.u32LeftPics + status.u32LeftStreamFrames)) {
+                break;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+        } while (m_venc_stop_wait_time < 0 || ((int32_t)(get_ms_ticks() - start) < m_venc_stop_wait_time));
+    }
+
     m_venc->stop();
     if (m_ivps) {
         m_ivps->stop();
@@ -180,6 +205,8 @@ axclError ppl_transcode::get_attr(const char* name, void* attr) {
         *(reinterpret_cast<uint32_t*>(attr)) = m_venc_in_fifo_depth;
     } else if (0 == strcmp(name, "axcl.ppl.transcode.venc.out.depth")) {
         *(reinterpret_cast<uint32_t*>(attr)) = m_venc_out_fifo_depth;
+    } else if (0 == strcmp(name, "axcl.ppl.transcode.venc.stop.wait")) {
+        *(reinterpret_cast<int32_t*>(attr)) = m_venc_stop_wait_time;
     } else {
         LOG_MM_E(TAG, "unsupport attribute {}", name);
         return AXCL_ERR_LITE_PPL_UNSUPPORT;
@@ -212,6 +239,8 @@ axclError ppl_transcode::set_attr(const char* name, const void* attr) {
         m_venc_in_fifo_depth = *(reinterpret_cast<const uint32_t*>(attr));
     } else if (0 == strcmp(name, "axcl.ppl.transcode.venc.out.depth")) {
         m_venc_out_fifo_depth = *(reinterpret_cast<const uint32_t*>(attr));
+    } else if (0 == strcmp(name, "axcl.ppl.transcode.venc.stop.wait")) {
+        m_venc_stop_wait_time = *(reinterpret_cast<const int32_t*>(attr));
     } else {
         LOG_MM_E(TAG, "unsupport attribute {}", name);
         return AXCL_ERR_LITE_PPL_UNSUPPORT;
@@ -233,8 +262,14 @@ axclite_vdec_attr ppl_transcode::get_vdec_attr() {
     chn.link = AX_TRUE;
     chn.width = m_ivps ? m_param.vdec.width : m_param.venc.width;
     chn.height = m_ivps ? m_param.vdec.height : m_param.venc.height;
-    chn.fbc.enCompressMode = AX_COMPRESS_MODE_LOSSY;
-    chn.fbc.u32CompressLevel = 4;
+    if (m_ivps && AX_IVPS_ENGINE_TDP == m_ivps_engine) {
+        /* TDP cannot support resize + FBCDC (cause artifacts) */
+        chn.fbc.enCompressMode = AX_COMPRESS_MODE_NONE;
+        chn.fbc.u32CompressLevel = 0;
+    } else {
+        chn.fbc.enCompressMode = AX_COMPRESS_MODE_LOSSY;
+        chn.fbc.u32CompressLevel = 4;
+    }
     chn.blk_cnt = m_vdec_blk_cnt;
     chn.fifo_depth = m_vdec_out_fifo_depth;
 
@@ -258,8 +293,14 @@ axclite_ivps_attr ppl_transcode::get_ivps_attr() {
     chn.height = m_param.venc.height;
     chn.stride = AXCL_ALIGN_UP(chn.width, 256);
     chn.pix_fmt = AX_FORMAT_YUV420_SEMIPLANAR;
-    chn.fbc.enCompressMode = AX_COMPRESS_MODE_LOSSY;
-    chn.fbc.u32CompressLevel = 4;
+    if (m_ivps && AX_IVPS_ENGINE_TDP == m_ivps_engine) {
+        /* fixme: enable FBC, TDP fps down, why? why? why? */
+        chn.fbc.enCompressMode = AX_COMPRESS_MODE_NONE;
+        chn.fbc.u32CompressLevel = 0;
+    } else {
+        chn.fbc.enCompressMode = AX_COMPRESS_MODE_LOSSY;
+        chn.fbc.u32CompressLevel = 4;
+    }
     chn.inplace = AX_FALSE;
     chn.blk_cnt = m_ivps_blk_cnt;
 
