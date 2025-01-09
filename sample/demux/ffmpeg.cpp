@@ -26,6 +26,7 @@
 
 extern "C" {
 #include "libavcodec/avcodec.h"
+#include "libavcodec/bsf.h"
 #include "libavformat/avformat.h"
 #include "libavutil/time.h"
 }
@@ -105,7 +106,7 @@ static int ffmpeg_deinit_demuxer(ffmpeg_context *context);
 static void ffmpeg_demux_thread(ffmpeg_context *context);
 static void ffmpeg_dispatch_thread(ffmpeg_context *context);
 
-int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, const char *rtmp_url, int32_t encodec, int32_t device, stream_sink sink, uint64_t userdata) {
+int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, const char *rtmp_url, bool h265, int32_t device, stream_sink sink, uint64_t userdata) {
     if (!url || device <= 0 || !demuxer) {
         SAMPLE_LOG_E("invalid parameters");
         return -EINVAL;
@@ -120,18 +121,10 @@ int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, const char *
     context->url = url;
     context->rtmp_url = rtmp_url;
 
-    switch (encodec) {
-        case PT_H264:
-            context->encodec = AV_CODEC_ID_H264;
-            break;
-        case PT_H265:
-            context->encodec = AV_CODEC_ID_HEVC;
-            break;
-        default:
-            context->encodec = AV_CODEC_ID_H264;
-            SAMPLE_LOG_E("[%d] unsupport video encodec!", encodec);
-            break;
-    }
+    if (h265)
+        context->encodec = AV_CODEC_ID_HEVC;
+    else
+        context->encodec = AV_CODEC_ID_H264;
 
     context->cookie = device;
     context->device = device;
@@ -604,15 +597,55 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
                     break;
                 }
 
-                ret = avcodec_parameters_copy(context->dest_video->codecpar, context->src_video->codecpar);
-                if (ret < 0) {
-                    SAMPLE_LOG_E("avcodec_parameters_copy\n");
-                    break;
+                if (context->encodec == AV_CODEC_ID_H264) {
+                    ret = avcodec_parameters_copy(context->dest_video->codecpar, context->src_video->codecpar);
+                    if (ret < 0) {
+                        SAMPLE_LOG_E("avcodec_parameters_copy\n");
+                        break;
+                    }
+                } else if (context->encodec == AV_CODEC_ID_HEVC) {
+                    const AVCodec *encoder;
+                    AVCodecContext *enc_ctx;
+
+                    encoder = avcodec_find_encoder_by_name("libx265");
+                    if (!encoder) {
+                        av_log(NULL, AV_LOG_FATAL, "Necessary encoder not found\n");
+                        return AVERROR_INVALIDDATA;
+                    }
+                    enc_ctx = avcodec_alloc_context3(encoder);
+                    if (!enc_ctx) {
+                        av_log(NULL, AV_LOG_FATAL, "Failed to allocate the encoder context\n");
+                        return AVERROR(ENOMEM);
+                    }
+
+                    enc_ctx->codec_id = AV_CODEC_ID_HEVC;
+                    enc_ctx->height = context->src_video->codecpar->height;
+                    enc_ctx->width = context->src_video->codecpar->width;
+                    enc_ctx->sample_aspect_ratio = context->src_video->codecpar->sample_aspect_ratio;
+                    enc_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+                    enc_ctx->time_base = av_inv_q(context->src_video->codecpar->framerate);
+                    enc_ctx->max_b_frames = 0;
+                    if (context->avfmt_rtmp_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+                        enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
+                    /* Third parameter can be used to pass settings to encoder */
+                    ret = avcodec_open2(enc_ctx, encoder, NULL);
+                    if (ret < 0) {
+                        av_log(NULL, AV_LOG_ERROR, "Cannot open %s encoder for stream #%u\n", encoder->name, i);
+                        return ret;
+                    }
+                    ret = avcodec_parameters_from_context(context->dest_video->codecpar, enc_ctx);
+                    if (ret < 0) {
+                        av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream #%u\n", i);
+                        return ret;
+                    }
+
+                    context->dest_video->time_base = enc_ctx->time_base;
+                    avcodec_free_context(&enc_ctx);
                 }
 
                 context->dest_video->codecpar->codec_id = context->encodec;
                 context->dest_video->codecpar->codec_tag = 0;
-                context->avfmt_rtmp_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
             } else if (AVMEDIA_TYPE_AUDIO == context->avfmt_in_ctx->streams[i]->codecpar->codec_type) {
                 context->audio_track_id = i;
                 context->src_audio = context->avfmt_in_ctx->streams[i];  // 保存音频的时间基
