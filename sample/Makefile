@@ -1,17 +1,5 @@
-SUBDIRS := runtime memory engine
-SUBDIRS += vdec venc ivps
-SUBDIRS += dmadim
-SUBDIRS += sys
-SUBDIRS += skel
-SUBDIRS += ive
-SUBDIRS += axclite
+SUBDIRS := axclite
 SUBDIRS += ppl
-
-ifeq ($(HOST),ax650)
-SUBDIRS += aicard
-else
-SUBDIRS += x86app
-endif
 
 ################################################################################
 #	prepare param

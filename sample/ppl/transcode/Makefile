@@ -66,7 +66,7 @@ CLIB                      += -L$(MSP_LIB_PATH) -lax_sys
 else
 CLIB                      += -Wl,-rpath-link=$(AXCL_LIB_PATH):$(FFMPEG_LIB_PATH)
 endif
-CLIB                      += -L$(FFMPEG_LIB_PATH) -lavcodec -lavutil -lavformat
+CLIB                      += -L$(FFMPEG_LIB_PATH) -lavcodec -lavutil -lavformat -lavfilter
 CLIB                      += -L$(AXCL_LIB_PATH) -laxcl_ppl -laxcl_rt
 
 
