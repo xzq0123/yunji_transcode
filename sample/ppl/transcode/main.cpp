@@ -66,7 +66,7 @@ static void handle_encoded_stream_callback(axcl_ppl ppl, const axcl_ppl_encoded_
 int main(int argc, char *argv[]) {
     const int32_t pid = static_cast<int32_t>(getpid());
     SAMPLE_LOG_I("============== %s sample started %s %s pid %d ==============\n", AXCL_BUILD_VERSION, __DATE__, __TIME__, pid);
-    signal(SIGINT, handler);
+    // signal(SIGINT, handler);
 
     cmdline::parser a;
     a.add<std::string>("url", 'i', "mp4|.264|.265 file path", true);
@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
     a.add<int32_t>("device", 'd', "device id", true);
     a.add<uint32_t>("width", 'w', "output width, 0 means same as input", false, 0);
     a.add<uint32_t>("height", 'h', "output height, 0 means same as input", false, 0);
+    a.add<std::string>("codec", '\0', "encoded codec: [h264 | h265] (default: h264)", false, "h264");
     a.add<std::string>("json", '\0', "axcl.json path", false, "./axcl.json");
     a.add<int32_t>("loop", '\0', "1: loop demux for local file  0: no loop(default)", false, 0, cmdline::oneof(0, 1));
     a.add<int32_t>("dump", '\0', "1: dump file  0: no dump(default)", false, 0, cmdline::oneof(0, 1));
@@ -83,6 +84,7 @@ int main(int argc, char *argv[]) {
     const int32_t device = a.get<int32_t>("device");
     const uint32_t width = a.get<uint32_t>("width");
     const uint32_t height = a.get<uint32_t>("height");
+    const std::string codec = a.get<std::string>("codec");
     const std::string json = a.get<std::string>("json");
     int32_t loop = a.get<int32_t>("loop");
     int32_t dump = a.get<int32_t>("dump");
@@ -95,7 +97,11 @@ int main(int argc, char *argv[]) {
     axcl_ppl ppl;
     std::unique_ptr<ppl_user_data, decltype(&ppl_user_data::destroy)> ppl_data(ppl_user_data::alloc(dump), &ppl_user_data::destroy);
     ppl_user_data *ppl_info = ppl_data.get();
-    ppl_info->payload = PT_H264;
+
+    if (0 == codec.compare("h265"))
+        ppl_info->payload = PT_H265;
+    else
+        ppl_info->payload = PT_H264;
 
     /**
      * @brief Initialize system runtime:
@@ -127,9 +133,9 @@ int main(int argc, char *argv[]) {
      *    2. Retrieve stream information such as width, height, payload, fps.
      */
     res_guard<ffmpeg_demuxer> demuxer_holder(
-        [&url, &rtmp_url, device, pid]() -> ffmpeg_demuxer {
+        [&url, &rtmp_url, codec, device, pid]() -> ffmpeg_demuxer {
             ffmpeg_demuxer handle;
-            ffmpeg_create_demuxer(&handle, url.c_str(), rtmp_url.c_str(), PT_H264, device, {}, 0);
+            ffmpeg_create_demuxer(&handle, url.c_str(), rtmp_url.c_str(), 0 == codec.compare("h265"), device, {}, 0);
             return handle;
         },
         [](ffmpeg_demuxer &handle) {
@@ -137,7 +143,12 @@ int main(int argc, char *argv[]) {
                 ffmpeg_destory_demuxer(handle);
             }
         });
+
     ffmpeg_demuxer demuxer = demuxer_holder.get();
+    if (!demuxer) {
+        axcl_ppl_deinit();
+        return 1;
+    }
 
     constexpr int32_t active_fps = 1;
     ffmpeg_set_demuxer_attr(demuxer, "ffmpeg.demux.file.frc", (const void *)&active_fps);
@@ -153,6 +164,9 @@ int main(int argc, char *argv[]) {
     if (width > 0 && height > 0) {
         transcode_param.venc.width = width;
         transcode_param.venc.height = height;
+
+        ffmpeg_set_demuxer_attr(demuxer, "ffmpeg.rtmp.width", (const void *)&width);
+        ffmpeg_set_demuxer_attr(demuxer, "ffmpeg.rtmp.height", (const void *)&height);
     }
 
     axcl_ppl_param ppl_param;
@@ -301,7 +315,7 @@ static axcl_ppl_transcode_param get_transcode_ppl_param_from_stream(const struct
     if (ppl_info->payload == PT_H264) {
         // H264
         transcode_param.venc.payload = ppl_info->payload;
-        transcode_param.venc.profile = AX_VENC_H264_BASE_PROFILE;
+        transcode_param.venc.profile = AX_VENC_H264_MAIN_PROFILE;
         transcode_param.venc.level = AX_VENC_H264_LEVEL_5_2;
         transcode_param.venc.gop.enGopMode = AX_VENC_GOPMODE_NORMALP;
         transcode_param.venc.rc = axcl_default_rc_h264_cbr_1080p_4096kbps;

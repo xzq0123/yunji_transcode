@@ -4,7 +4,7 @@ HOME_PATH                 := $(abspath $(CUR_PATH)/../..)
 
 include $(HOME_PATH)/build/config.mak
 
-FFMPEG_LIB_PATH           := $(AXCL_HOME_PATH)/3rdparty/ffmpeg/$(ARCH)/lib
+FFMPEG_LIB_PATH           := $(AXCL_LIB_PATH)/ffmpeg
 FFMPEG_INC_PATH           := $(AXCL_HOME_PATH)/3rdparty/ffmpeg/$(ARCH)/include
 
 OUT_PATH                  := $(AXCL_OUT_PATH)

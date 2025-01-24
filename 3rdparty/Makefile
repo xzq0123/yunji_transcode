@@ -1,4 +1,4 @@
-SUBDIRS = ffmpeg spdlog
+SUBDIRS = spdlog
 
 ################################################################################
 #	prepare param

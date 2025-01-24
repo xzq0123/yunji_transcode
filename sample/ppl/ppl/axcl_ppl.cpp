@@ -13,7 +13,7 @@
 
 static ppl_core g_ppl;
 
-AXCL_EXPORT axclError axcl_ppl_init(const axcl_ppl_init_param* param) {
+AXCL_EXPORT axclError axcl_ppl_init(axcl_ppl_init_param* param) {
     return g_ppl.init(param);
 }
 

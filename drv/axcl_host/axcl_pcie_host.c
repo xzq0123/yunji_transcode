@@ -20,14 +20,13 @@
 #include <uapi/linux/time.h>
 #include <linux/sched.h>
 #include <linux/firmware.h>
-#include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/delay.h>
 #include "axcl_pcie_host.h"
 
 #define AXCL_DUMP_ADDR_SRC	(0x100000000)
 
-static struct semaphore ioctl_sem;
+static DEFINE_MUTEX(ioctl_mutex);
 static struct task_struct *heartbeat[32];
 ax_pcie_msg_handle_t *port_handle[AXERA_MAX_MAP_DEV][MAX_MSG_PORTS];
 
@@ -37,9 +36,8 @@ static void *dma_virt_addr;
 static spinlock_t g_axcl_lock;
 struct device_connect_status heartbeat_status;
 unsigned int port_info[AXERA_MAX_MAP_DEV][MAX_MSG_PORTS] = { 0 };
-struct axcl_device_info g_pttr[AXCL_PROCESS_MAX][AXERA_MAX_MAP_DEV] = { 0 };
 
-struct process_wait g_pro_wait[AXCL_PROCESS_MAX];
+static struct axcl_handle_t *axcl_handle;
 
 static inline u32 pcie_dev_readl(struct axera_dev *ax_dev, u32 offset)
 {
@@ -245,7 +243,8 @@ void free_buf_alloc(struct axera_dev *ax_dev)
 	dma_free_coherent(dev, MAX_TRANSFER_SIZE, dma_virt_addr, phys_addr);
 }
 
-int wait_device_recv_completion(struct axera_dev *ax_dev, unsigned int flags, unsigned int timeout)
+int wait_device_recv_completion(struct axera_dev *ax_dev, unsigned int flags,
+				unsigned int timeout)
 {
 	int ret = -1;
 	unsigned int reg = 0;
@@ -295,8 +294,7 @@ int axcl_get_dev_boot_reason(struct axera_dev *ax_dev)
 	return boot_reason;
 }
 
-int axcl_dump_data(struct axera_dev *ax_dev, unsigned long src,
-			    int size)
+int axcl_dump_data(struct axera_dev *ax_dev, unsigned long src, int size)
 {
 	pcie_dev_writel(ax_dev, AX_PCIE_ENDPOINT_LOWER_SRC_ADDR,
 			lower_32_bits(src));
@@ -352,8 +350,9 @@ int axcl_device_sysdump(struct axera_dev *ax_dev)
 	local_time = ts.tv_sec + (minutes_west * 60 * -1);
 	time64_to_tm(local_time, 0, &tm);
 	snprintf(filename, AXCL_NAME_LEN, "%s/%s_%x.%04ld%02d%02d%02d%02d%02d",
-		sysdump_ctrl.path, AXCL_SYSDUMP_NAME, ax_dev->slot_index, tm.tm_year + 1900,
-		tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+		 sysdump_ctrl.path, AXCL_SYSDUMP_NAME, ax_dev->slot_index,
+		 tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
+		 tm.tm_min, tm.tm_sec);
 
 	filp = filp_open(filename, O_RDWR | O_CREAT, 0777);
 	if (IS_ERR(filp)) {
@@ -538,7 +537,10 @@ int heartbeat_recv_thread(void *pArg)
 	unsigned int timeout = 50000;
 	struct device_heart_packet *hbeat;
 	struct axera_dev *axdev;
-	int i;
+	struct list_head *entry, *tmp;
+	struct list_head *deventry, *devtmp;
+	struct device_handle_t *dev_handle = NULL;
+	struct process_info_t *process_handle = NULL;
 	int ret;
 
 	axcl_trace(AXCL_DEBUG, "target 0x%x thread running", target);
@@ -562,13 +564,29 @@ int heartbeat_recv_thread(void *pArg)
 			axcl_trace(AXCL_ERR, "device %x: dead!", target);
 			axcl_devices_heartbeat_status_set(target,
 							  AXCL_HEARTBEAT_DEAD);
-			for (i = 0; i < AXCL_PROCESS_MAX; i++) {
-				if (g_pro_wait[i].pid != 0) {
-					atomic_inc(&g_pro_wait[i].event);
-					wake_up_interruptible(&g_pro_wait
-							      [i].wait);
+
+			mutex_lock(&ioctl_mutex);
+			if (axcl_handle) {
+				if (!list_empty(&axcl_handle->process_list)) {
+					list_for_each_safe(entry, tmp, &axcl_handle->process_list) {
+						process_handle = list_entry(entry, struct process_info_t, head);
+						if (process_handle == NULL)
+							continue;
+						if (!list_empty(&process_handle->dev_list)) {
+							list_for_each_safe(deventry, devtmp, &process_handle->dev_list) {
+								dev_handle = list_entry(deventry, struct device_handle_t, head);
+								if (dev_handle == NULL)
+									continue;
+								if (dev_handle->device == target) {
+									atomic_inc(&process_handle->event);
+									wake_up_interruptible(&process_handle->wait);
+								}
+							}
+						}
+					}
 				}
 			}
+			mutex_unlock(&ioctl_mutex);
 		}
 		if ((0 < hbeat->interval)
 		    && (hbeat->interval < AXCL_RECV_TIMEOUT)) {
@@ -582,46 +600,54 @@ int heartbeat_recv_thread(void *pArg)
 	return 0;
 }
 
-int axcl_pcie_port_manage(struct axcl_device_info *devinfo)
+int axcl_pcie_port_manage(struct file *file, struct axcl_device_info *devinfo)
 {
 	struct ax_transfer_handle *handle;
 	struct axcl_device_info rdevinfo;
+	struct device_handle_t *dev_handle = NULL;
+	struct process_info_t *process_handle = file->private_data;
+	struct list_head *entry, *tmp;
 	unsigned int target = devinfo->device;
 	unsigned int pid = devinfo->pid;
 	unsigned int port = AXCL_NOTIFY_PORT;
-	unsigned int pro;
 	int count = 0;
 	int ret;
 	int i;
 
 	axcl_trace(AXCL_DEBUG, "pid = %d, cpid = %d, ctgid = %d, cname = %s",
-			pid, current->pid, current->tgid, current->comm);
+		   pid, current->pid, current->tgid, current->comm);
 
 	if (!pid) {
 		axcl_trace(AXCL_ERR, "current process is NULL.");
 		return -1;
 	}
 
-	for (i = 0; i < AXCL_PROCESS_MAX; i++) {
-		if (g_pttr[i][target].pid == pid) {
-			memcpy(devinfo, &g_pttr[i][target],
-			       sizeof(struct axcl_device_info));
-			return 0;
-		}
-	}
-
-	for (i = 0; i < AXCL_PROCESS_MAX; i++) {
-		if (g_pttr[i][target].pid == 0) {
-			pro = i;
-			break;
-		}
-	}
-
-	if (i == AXCL_PROCESS_MAX) {
-		axcl_trace(AXCL_ERR,
-			   "The number of processes exceeds the limit: %d", i);
+	if (!process_handle) {
+		axcl_trace(AXCL_ERR, "process handler is NULL");
 		return -1;
 	}
+
+	if (!list_empty(&process_handle->dev_list)) {
+		list_for_each_safe(entry, tmp, &process_handle->dev_list) {
+			dev_handle = list_entry(entry, struct device_handle_t, head);
+			if (dev_handle->device == target) {
+				devinfo->cmd = dev_handle->cmd;
+				devinfo->port_num = dev_handle->port_num;
+				memcpy(devinfo->ports, dev_handle->ports,
+				       devinfo->port_num * sizeof(int));
+				return 0;
+			}
+		}
+	}
+
+	dev_handle = kmalloc(sizeof(struct device_handle_t), GFP_KERNEL);
+	if (NULL == dev_handle) {
+		axcl_trace(AXCL_ERR,
+			   "kmalloc for device handler failed, target = %x",
+			   target);
+		return -1;
+	}
+	INIT_LIST_HEAD(&dev_handle->head);
 
 	for (i = AXCL_BASE_PORT; i < MAX_MSG_PORTS; i++) {
 		if (port_info[target][i] == i)
@@ -632,16 +658,17 @@ int axcl_pcie_port_manage(struct axcl_device_info *devinfo)
 
 		port_info[target][i] = i;
 		devinfo->ports[count] = i;
-		g_pttr[pro][target].pid = pid;
-		g_pttr[pro][target].ports[count] = i;
+		dev_handle->ports[count] = i;
 
-		axcl_trace(AXCL_INFO, "alloc port:  i: 0x%x, pro: %d, target: %d, pid: %d", i, pro, target, g_pttr[pro][target].pid);
+		axcl_trace(AXCL_INFO,
+			   "alloc port:  i: 0x%x, target: %d, pid: %d", i,
+			   target, pid);
 		count++;
 	}
 
 	devinfo->port_num = count;
-	g_pttr[pro][target].port_num = count;
-	g_pttr[pro][target].device = target;
+	dev_handle->device = target;
+	dev_handle->port_num = count;
 
 	handle =
 	    (struct ax_transfer_handle *)port_handle[target][port]->pci_handle;
@@ -651,6 +678,7 @@ int axcl_pcie_port_manage(struct axcl_device_info *devinfo)
 	if (ret < 0) {
 		axcl_trace(AXCL_ERR, "Send create port msg info failed: %d.",
 			   ret);
+		kfree(dev_handle);
 		return -1;
 	}
 
@@ -660,6 +688,7 @@ int axcl_pcie_port_manage(struct axcl_device_info *devinfo)
 				   AXCL_RECV_TIMEOUT);
 	if (ret < 0) {
 		axcl_trace(AXCL_ERR, "Recv port ack timeout.");
+		kfree(dev_handle);
 		return -1;
 	}
 
@@ -668,12 +697,15 @@ int axcl_pcie_port_manage(struct axcl_device_info *devinfo)
 		for (i = 0; i < devinfo->port_num; i++) {
 			port_info[target][devinfo->ports[i]] = 0;
 		}
-		g_pttr[pro][target].pid = 0;
-		ret = -1;
+		devinfo->cmd = rdevinfo.cmd;
+		kfree(dev_handle);
+		return -1;
 	}
 
 	devinfo->cmd = rdevinfo.cmd;
-	g_pttr[pro][target].cmd = rdevinfo.cmd;
+	dev_handle->cmd = rdevinfo.cmd;
+
+	list_add_tail(&dev_handle->head, &process_handle->dev_list);
 
 	return ret;
 }
@@ -758,151 +790,227 @@ static void axcl_get_bus_info(struct axcl_bus_info_t *businfo)
 	}
 }
 
-static void axcl_get_pid_info(struct axcl_pid_info_t *pidinfo)
+static int axcl_get_pid_info(struct axcl_pid_info_t *pidinfo)
 {
-	unsigned int i;
-	unsigned int j;
-	unsigned int target;
-	for (i = 0; i < g_pcie_opt->remote_device_number; ++i) {
-		if (g_axera_dev_map[i]->slot_index == pidinfo->device) {
-			target = g_axera_dev_map[i]->slot_index;
-			pidinfo->num = 0;
-			for (j = 0; j < AXCL_PROCESS_MAX; ++j) {
-				if (g_pttr[j][target].pid > 0) {
-					pidinfo->pid[pidinfo->num++] = g_pttr[j][target].pid;
-				}
-			}
-			break;
-		}
+	struct process_info_t *process_handle = NULL;
+	struct device_handle_t *dev_handle = NULL;
+	struct list_head *entry, *tmp;
+	struct list_head *deventry, *devtmp;
+	unsigned int target = pidinfo->device;
+	unsigned int count = 0;
+	unsigned long pidaddr = pidinfo->pid;
+	unsigned int pidnum = pidinfo->num;
+	int *pidbuf;
+
+	if (!pidnum) {
+		axcl_trace(AXCL_ERR, "No device pid");
+		return 0;
 	}
-}
 
-static int axcl_pcie_open(struct inode *inode, struct file *file)
-{
-	int i;
-
-	axcl_trace(AXCL_DEBUG, "axcl pcie open pid = %d.", current->pid);
-
-	if (down_interruptible(&ioctl_sem)) {
-		axcl_trace(AXCL_ERR, "acquire handle sem failed!");
+	if (!pidinfo->pid) {
+		axcl_trace(AXCL_ERR, "User pid addr is NULL");
 		return -1;
 	}
 
-	for (i = 0; i < AXCL_PROCESS_MAX; i++) {
-		if (g_pro_wait[i].pid == 0) {
-			g_pro_wait[i].pid = current->pid;
-			break;
-		}
-	}
-	if (i == AXCL_PROCESS_MAX) {
-		axcl_trace(AXCL_ERR, "Not free process id.");
-		up(&ioctl_sem);
+	pidbuf = vmalloc(sizeof(int) * pidnum);
+	if (!pidbuf) {
+		axcl_trace(AXCL_ERR, "Pid buf malloc failed");
 		return -1;
 	}
+	memset(pidbuf, 0, sizeof(int) * pidnum);
 
-	axcl_trace(AXCL_DEBUG, "axcl pcie open end: %d", i);
-
-	file->private_data = &g_pro_wait[i];
-
-	up(&ioctl_sem);
-	return 0;
-}
-
-static void axcl_clean_port_info(int pro, int dev, unsigned int pid)
-{
-	int i;
-
-	for (i = 0; i < g_pttr[pro][dev].port_num; i++) {
-		port_info[dev][g_pttr[pro][dev].ports[i]] = 0;
-	}
-	for (i = 0; i < AXCL_PROCESS_MAX; i++) {
-		if (g_pro_wait[i].pid == pid) {
-			g_pro_wait[i].pid = 0;
-			break;
-		}
-	}
-	memset(&g_pttr[pro][dev], 0, sizeof(struct axcl_device_info));
-}
-
-static int axcl_wake_up_poll(void)
-{
-	int i;
-
-	for (i = 0; i < AXCL_PROCESS_MAX; i++) {
-		if (g_pro_wait[i].pid == current->pid) {
-			atomic_inc(&g_pro_wait[i].event);
-			wake_up_interruptible(&g_pro_wait[i].wait);
-			axcl_trace(AXCL_DEBUG, "close i = %d, pid = %d", i,
-				   current->pid);
-			break;
-		}
-	}
-
-	if (i == AXCL_PROCESS_MAX) {
-		axcl_trace(AXCL_ERR, "Not found current pid %d in array", current->pid);
-		for (i = 0; i < AXCL_PROCESS_MAX; i++) {
-			axcl_trace(AXCL_ERR, "g_pro_wait[%d].pid = %d", i, g_pro_wait[i].pid);
-		}
-		return -1;
-	}
-	return 0;
-}
-
-static int axcl_pcie_release(struct inode *inode, struct file *file)
-{
-	struct axcl_device_info devinfo;
-	struct ax_transfer_handle *handle;
-	unsigned int target;
-	unsigned int pid = current->tgid;
-	unsigned int port = AXCL_NOTIFY_PORT;
-	int i, j, k;
-	int ret;
-
-	axcl_trace(AXCL_DEBUG, "current pid = %d, current tgid = %d, current name = %s",
-				current->pid, current->tgid, current->comm);
-
-	if (down_interruptible(&ioctl_sem)) {
-		axcl_trace(AXCL_ERR, "acquire handle sem failed!");
-		return -1;
-	}
-
-	for (i = 0; i < AXCL_PROCESS_MAX; i++) {
-		for (j = 0; j < AXERA_MAX_MAP_DEV; j++) {
-			if (pid == g_pttr[i][j].pid) {
-				target = g_pttr[i][j].device;
-				axcl_trace(AXCL_DEBUG,
-					   "axcl pcie release target: 0x%x",
-					   target);
-				memcpy(&devinfo, &g_pttr[i][j],
-				       sizeof(struct axcl_device_info));
-				devinfo.cmd = AXCL_PORT_DESTROY;
-				handle = (struct ax_transfer_handle *)
-				    port_handle[target][port]->pci_handle;
-				ret =
-				    axcl_pcie_msg_send(handle, (void *)&devinfo,
-						       sizeof(struct
-							      axcl_device_info));
-				if (ret < 0) {
-					axcl_clean_port_info(i, j, pid);
-					axcl_trace(AXCL_ERR,
-						   "Send create port msg info failed: %d",
-						   ret);
-					up(&ioctl_sem);
-					return -1;
-				}
-				axcl_clean_port_info(i, j, pid);
-			} else {
-				for (k = 0; k < AXCL_PROCESS_MAX; k++) {
-					if (g_pro_wait[k].pid == pid) {
-						g_pro_wait[k].pid = 0;
-						break;
+	if (axcl_handle) {
+		if (!list_empty(&axcl_handle->process_list)) {
+			list_for_each_safe(entry, tmp, &axcl_handle->process_list) {
+				process_handle = list_entry(entry, struct process_info_t, head);
+				if (process_handle == NULL)
+					continue;
+				if (!list_empty(&process_handle->dev_list)) {
+					list_for_each_safe(deventry, devtmp, &process_handle->dev_list) {
+						dev_handle = list_entry(deventry, struct device_handle_t, head);
+						if (dev_handle == NULL)
+							continue;
+						if (dev_handle->device == target) {
+							if (count >= pidnum)
+								break;
+							pidbuf[count] = process_handle->pid;
+							count++;
+							break;
+						}
 					}
 				}
 			}
 		}
 	}
 
-	up(&ioctl_sem);
+	if (copy_to_user((void *)pidaddr, pidbuf, sizeof(int) * pidnum)) {
+		axcl_trace(AXCL_ERR, "IOC_AXCL_PID_INFO copy to usr space failed!");
+		vfree(pidbuf);
+		return -1;
+	}
+	vfree(pidbuf);
+	return 0;
+}
+
+static void axcl_get_pid_num(struct axcl_pid_num_t *pidnum)
+{
+	struct process_info_t *process_handle = NULL;
+	struct device_handle_t *dev_handle = NULL;
+	struct list_head *entry, *tmp;
+	struct list_head *deventry, *devtmp;
+	unsigned int target = pidnum->device;
+	unsigned int count = 0;
+
+	if (axcl_handle) {
+		if (!list_empty(&axcl_handle->process_list)) {
+			list_for_each_safe(entry, tmp, &axcl_handle->process_list) {
+				process_handle = list_entry(entry, struct process_info_t, head);
+				if (process_handle == NULL)
+					continue;
+				if (!list_empty(&process_handle->dev_list)) {
+					list_for_each_safe(deventry, devtmp, &process_handle->dev_list) {
+						dev_handle = list_entry(deventry, struct device_handle_t, head);
+						if (dev_handle == NULL)
+							continue;
+						if (dev_handle->device == target) {
+							count++;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	pidnum->num = count;
+}
+
+static int axcl_pcie_open(struct inode *inode, struct file *file)
+{
+	struct process_info_t *process_handle = NULL;
+	struct list_head *entry, *tmp;
+
+	axcl_trace(AXCL_DEBUG, "axcl pcie open pid = %d.", current->pid);
+
+	if (!axcl_handle) {
+		axcl_trace(AXCL_ERR, "axcl handler is NULL");
+		return -1;
+	}
+
+	mutex_lock(&ioctl_mutex);
+	if (!list_empty(&axcl_handle->process_list)) {
+		list_for_each_safe(entry, tmp, &axcl_handle->process_list) {
+			process_handle = list_entry(entry, struct process_info_t, head);
+			if (process_handle) {
+				if (process_handle->pid == current->pid) {
+					file->private_data = process_handle;
+					mutex_unlock(&ioctl_mutex);
+					return 0;
+				}
+			}
+		}
+	}
+
+	process_handle = kmalloc(sizeof(struct process_info_t), GFP_KERNEL);
+	if (NULL == process_handle) {
+		axcl_trace(AXCL_ERR,
+			   "kmalloc for process handler failed, pid = %d",
+			   current->pid);
+		mutex_unlock(&ioctl_mutex);
+		return -1;
+	}
+
+	INIT_LIST_HEAD(&process_handle->head);
+	INIT_LIST_HEAD(&process_handle->dev_list);
+	atomic_set(&process_handle->event, 0);
+	init_waitqueue_head(&process_handle->wait);
+	process_handle->pid = current->pid;
+
+	list_add_tail(&process_handle->head, &axcl_handle->process_list);
+	file->private_data = process_handle;
+
+	mutex_unlock(&ioctl_mutex);
+	return 0;
+}
+
+static void axcl_clean_port_info(int dev, struct device_handle_t *dev_handle)
+{
+	int i;
+
+	for (i = 0; i < dev_handle->port_num; i++) {
+		port_info[dev][dev_handle->ports[i]] = 0;
+	}
+}
+
+static int axcl_wake_up_poll(struct file *file)
+{
+	struct process_info_t *process_handle = file->private_data;
+
+	if (!process_handle) {
+		axcl_trace(AXCL_ERR, "wake up process handler is NULL");
+		return -1;
+	}
+
+	atomic_inc(&process_handle->event);
+	wake_up_interruptible(&process_handle->wait);
+
+	return 0;
+}
+
+static int axcl_pcie_release(struct inode *inode, struct file *file)
+{
+	struct list_head *entry, *tmp;
+	struct axcl_device_info devinfo;
+	struct ax_transfer_handle *handle;
+	struct process_info_t *process_handle = file->private_data;
+	struct device_handle_t *dev_handle = NULL;
+	unsigned int target;
+	unsigned int port = AXCL_NOTIFY_PORT;
+	int ret;
+
+	axcl_trace(AXCL_DEBUG,
+		   "current pid = %d, current tgid = %d, current name = %s",
+		   current->pid, current->tgid, current->comm);
+
+	if (!process_handle) {
+		axcl_trace(AXCL_ERR, "release: process handle is NULL");
+		return -1;
+	}
+
+	mutex_lock(&ioctl_mutex);
+	if (!list_empty(&process_handle->dev_list)) {
+		list_for_each_safe(entry, tmp, &process_handle->dev_list) {
+			dev_handle = list_entry(entry, struct device_handle_t, head);
+			if (dev_handle == NULL)
+				continue;
+			target = dev_handle->device;
+			axcl_trace(AXCL_DEBUG, "axcl pcie release target: 0x%x",
+				   target);
+			devinfo.device = dev_handle->device;
+			devinfo.cmd = AXCL_PORT_DESTROY;
+			devinfo.port_num = dev_handle->port_num;
+			memcpy(devinfo.ports, dev_handle->ports,
+			       dev_handle->port_num * sizeof(int));
+			handle =
+			    (struct ax_transfer_handle *)
+			    port_handle[target][port]->pci_handle;
+			ret =
+			    axcl_pcie_msg_send(handle, (void *)&devinfo,
+					       sizeof(struct axcl_device_info));
+			if (ret < 0) {
+				axcl_trace(AXCL_ERR,
+					   "Send dev %x destroy port msg info failed: %d",
+					   target, ret);
+			}
+			axcl_clean_port_info(target, dev_handle);
+			list_del(&dev_handle->head);
+			kfree(dev_handle);
+		}
+	}
+
+	list_del(&process_handle->head);
+	kfree(process_handle);
+
+	mutex_unlock(&ioctl_mutex);
 	return 0;
 }
 
@@ -914,12 +1022,9 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 	struct device_list_t devlist;
 	struct axcl_bus_info_t businfo;
 	struct axcl_pid_info_t pidinfo;
+	struct axcl_pid_num_t pidnum;
 
-	if (down_interruptible(&ioctl_sem)) {
-		axcl_trace(AXCL_ERR, "acquire handle sem failed!");
-		return -1;
-	}
-
+	mutex_lock(&ioctl_mutex);
 	switch (cmd) {
 	case IOC_AXCL_DEVICE_LIST:
 		axcl_trace(AXCL_DEBUG, "IOC_AXCL_DEVICE_LIST.");
@@ -927,7 +1032,8 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_to_user
 		    ((void *)arg, (void *)&devlist,
 		     sizeof(struct device_list_t))) {
-			axcl_trace(AXCL_ERR, "IOC_AXCL_DEVICE_LIST copy to usr space failed!");
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_DEVICE_LIST copy to usr space failed!");
 			ret = -1;
 			goto out;
 		}
@@ -937,11 +1043,12 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_from_user
 		    ((void *)&devinfo, (void *)arg,
 		     sizeof(struct axcl_device_info))) {
-			axcl_trace(AXCL_ERR, "IOC_AXCL_PORT_MANAGE Get parameter from usr space failed!");
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_PORT_MANAGE Get parameter from usr space failed!");
 			ret = -1;
 			goto out;
 		}
-		ret = axcl_pcie_port_manage(&devinfo);
+		ret = axcl_pcie_port_manage(file, &devinfo);
 		if (ret < 0) {
 			axcl_trace(AXCL_ERR, "axcl pcie req port failed.");
 			goto out;
@@ -949,7 +1056,8 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 			if (copy_to_user
 			    ((void *)arg, (void *)&devinfo,
 			     sizeof(struct axcl_device_info))) {
-				axcl_trace(AXCL_ERR, "IOC_AXCL_PORT_MANAGE copy to usr space failed!");
+				axcl_trace(AXCL_ERR,
+					   "IOC_AXCL_PORT_MANAGE copy to usr space failed!");
 				ret = -1;
 				goto out;
 			}
@@ -960,16 +1068,18 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_to_user
 		    ((void *)arg, (void *)&heartbeat_status,
 		     sizeof(struct device_connect_status))) {
-			axcl_trace(AXCL_ERR, "IOC_AXCL_CONN_STATUS copy to usr space failed!");
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_CONN_STATUS copy to usr space failed!");
 			ret = -1;
 			goto out;
 		}
 		break;
 	case IOC_AXCL_WAKEUP_POLL:
 		axcl_trace(AXCL_DEBUG, "IOC_AXCL_WAKEUP_STATUS.");
-		ret = axcl_wake_up_poll();
+		ret = axcl_wake_up_poll(file);
 		if (ret < 0) {
-			axcl_trace(AXCL_ERR, "IOC_AXCL_WAKEUP_STATUS AXCL wake up poll failed.");
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_WAKEUP_STATUS AXCL wake up poll failed.");
 			goto out;
 		}
 		break;
@@ -978,7 +1088,8 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_from_user
 		    ((void *)&devinfo, (void *)arg,
 		     sizeof(struct axcl_device_info))) {
-			axcl_trace(AXCL_ERR, "IOC_AXCL_DEVICE_RESET Get parameter from usr space failed!");
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_DEVICE_RESET Get parameter from usr space failed!");
 			ret = -1;
 			goto out;
 		}
@@ -986,10 +1097,11 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case IOC_AXCL_DEVICE_BOOT:
 		ret =
-		    axcl_firmware_load(g_pcie_opt->
-				       slot_to_axdev(devinfo.device));
+		    axcl_firmware_load(g_pcie_opt->slot_to_axdev
+				       (devinfo.device));
 		if (ret < 0) {
-			axcl_trace(AXCL_ERR, "IOC_AXCL_DEVICE_BOOT Device %x firmware load failed.",
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_DEVICE_BOOT Device %x firmware load failed.",
 				   devinfo.device);
 			axcl_devices_heartbeat_status_set(devinfo.device,
 							  AXCL_HEARTBEAT_DEAD);
@@ -1000,7 +1112,8 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_from_user
 		    ((void *)&businfo, (void *)arg,
 		     sizeof(struct axcl_bus_info_t))) {
-			axcl_trace(AXCL_ERR, "IOC_AXCL_BUS_INFO Get parameter from usr space failed!");
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_BUS_INFO Get parameter from usr space failed!");
 			ret = -1;
 			goto out;
 		}
@@ -1010,7 +1123,27 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_to_user
 		    ((void *)arg, (void *)&businfo,
 		     sizeof(struct axcl_bus_info_t))) {
-			axcl_trace(AXCL_ERR, "IOC_AXCL_BUS_INFO copy to usr space failed!");
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_BUS_INFO copy to usr space failed!");
+			ret = -1;
+			goto out;
+		}
+		break;
+	case IOC_AXCL_PID_NUM:
+		if (copy_from_user
+		    ((void *)&pidnum, (void *)arg,
+		     sizeof(struct axcl_pid_num_t))) {
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_PID_NUM Get parameter from usr space failed!");
+			ret = -1;
+			goto out;
+		}
+		axcl_get_pid_num(&pidnum);
+		if (copy_to_user
+		    ((void *)arg, (void *)&pidnum,
+		     sizeof(struct axcl_pid_num_t))) {
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_PID_NUM copy to usr space failed!");
 			ret = -1;
 			goto out;
 		}
@@ -1019,21 +1152,18 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 		if (copy_from_user
 		    ((void *)&pidinfo, (void *)arg,
 		     sizeof(struct axcl_pid_info_t))) {
-			axcl_trace(AXCL_ERR, "IOC_AXCL_PID_INFO Get parameter from usr space failed!");
+			axcl_trace(AXCL_ERR,
+				   "IOC_AXCL_PID_INFO Get parameter from usr space failed!");
 			ret = -1;
 			goto out;
 		}
 
-		axcl_trace(AXCL_INFO, "IOC_AXCL_PID_INFO target = 0x%x", pidinfo.device);
+		axcl_trace(AXCL_INFO, "IOC_AXCL_PID_INFO target = 0x%x",
+			   pidinfo.device);
 
-		axcl_get_pid_info(&pidinfo);
-
-		if (copy_to_user
-		    ((void *)arg, (void *)&pidinfo,
-		     sizeof(struct axcl_pid_info_t))) {
-			axcl_trace(AXCL_ERR, "IOC_AXCL_PID_INFO copy to usr space failed!");
-			ret = -1;
-			goto out;
+		ret = axcl_get_pid_info(&pidinfo);
+		if (ret < 0) {
+			axcl_trace(AXCL_ERR, "axcl get pid info failed");
 		}
 		break;
 	default:
@@ -1042,7 +1172,7 @@ static long axcl_pcie_ioctl(struct file *file, unsigned int cmd,
 	}
 
 out:
-	up(&ioctl_sem);
+	mutex_unlock(&ioctl_mutex);
 	return ret;
 }
 
@@ -1061,15 +1191,22 @@ static ssize_t axcl_pcie_read(struct file *file, char __user *buf,
 static unsigned int axcl_pcie_poll(struct file *file,
 				   struct poll_table_struct *table)
 {
-	struct process_wait *process_wait =
-	    (struct process_wait *)file->private_data;
+	struct process_info_t *process_handle = file->private_data;
 
-	poll_wait(file, &process_wait->wait, table);
+	if (!process_handle) {
+		axcl_trace(AXCL_ERR, "process handle is NULL");
+		return -1;
+	}
 
-	if (atomic_read(&process_wait->event) > 0) {
-		atomic_dec(&process_wait->event);
+	mutex_lock(&ioctl_mutex);
+	poll_wait(file, &process_handle->wait, table);
+
+	if (atomic_read(&process_handle->event) > 0) {
+		atomic_dec(&process_handle->event);
+		mutex_unlock(&ioctl_mutex);
 		return POLLIN | POLLRDNORM;
 	}
+	mutex_unlock(&ioctl_mutex);
 	return 0;
 }
 
@@ -1120,12 +1257,6 @@ int axcl_common_prot_create(unsigned int target)
 		axcl_trace(AXCL_ERR, "axcl pcie heartbeat port open failed.");
 		return -1;
 	}
-	/* create proc port */
-	ret = axcl_pcie_host_port_open(target, AXCL_PROC_PORT);
-	if (ret < 0) {
-		axcl_trace(AXCL_ERR, "axcl pcie notify port open failed.\n");
-		return -1;
-	}
 	return 0;
 }
 
@@ -1135,7 +1266,7 @@ static int __init axcl_pcie_host_init(void)
 	unsigned int target;
 	axcl_trace(AXCL_DEBUG, "axcl pcie host init.");
 
-	sema_init(&ioctl_sem, 1);
+	mutex_init(&ioctl_mutex);
 	spin_lock_init(&g_axcl_lock);
 
 	for (i = 0; i < AXERA_MAX_MAP_DEV; i++) {
@@ -1195,14 +1326,13 @@ static int __init axcl_pcie_host_init(void)
 		axcl_timestamp_sync(g_axera_dev_map[i]);
 	}
 
-	axcl_pcie_proc_create();
-
 	/* 5. create heartbeat recv thread */
-	for (i = 0; i < AXCL_PROCESS_MAX; i++) {
-		g_pro_wait[i].pid = 0;
-		atomic_set(&g_pro_wait[i].event, 0);
-		init_waitqueue_head(&g_pro_wait[i].wait);
+	axcl_handle = kmalloc(sizeof(struct axcl_handle_t), GFP_KERNEL);
+	if (NULL == axcl_handle) {
+		axcl_trace(AXCL_ERR, "kmalloc for axcl handler failed");
+		return -1;
 	}
+	INIT_LIST_HEAD(&axcl_handle->process_list);
 
 	for (i = 0; i < g_pcie_opt->remote_device_number; i++) {
 		target = g_axera_dev_map[i]->slot_index;
@@ -1224,12 +1354,48 @@ static int __init axcl_pcie_host_init(void)
 	return 0;
 }
 
+static void axcl_del_mem_list(void)
+{
+	struct list_head *entry, *tmp;
+	struct list_head *deventry, *devtmp;
+	struct process_info_t *process_handle = NULL;
+	struct device_handle_t *dev_handle = NULL;
+
+	mutex_lock(&ioctl_mutex);
+	if (!axcl_handle) {
+		axcl_trace(AXCL_ERR, "axcl handle is NULL");
+		mutex_unlock(&ioctl_mutex);
+		return;
+	}
+
+	/* mem list empty means no data is comming */
+	if (!list_empty(&axcl_handle->process_list)) {
+		list_for_each_safe(entry, tmp, &axcl_handle->process_list) {
+			process_handle = list_entry(entry, struct process_info_t, head);
+			if (process_handle == NULL)
+				continue;
+			if (!list_empty(&process_handle->dev_list)) {
+				list_for_each_safe(deventry, devtmp, &process_handle->dev_list) {
+					dev_handle = list_entry(deventry, struct device_handle_t, head);
+					if (dev_handle == NULL)
+						continue;
+					list_del(&dev_handle->head);
+					kfree(dev_handle);
+				}
+			}
+			list_del(&process_handle->head);
+			kfree(process_handle);
+		}
+	}
+	kfree(axcl_handle);
+	mutex_unlock(&ioctl_mutex);
+}
+
 static void __exit axcl_pcie_host_exit(void)
 {
 	int i;
 	unsigned int target;
 
-	axcl_pcie_proc_remove();
 	for (i = 0; i < g_pcie_opt->remote_device_number; i++) {
 		target = g_axera_dev_map[i]->slot_index;
 		if (heartbeat[i]) {
@@ -1237,6 +1403,8 @@ static void __exit axcl_pcie_host_exit(void)
 		}
 		host_reset_device(target);
 	}
+
+	axcl_del_mem_list();
 
 	misc_deregister(&axcl_usrdev);
 }

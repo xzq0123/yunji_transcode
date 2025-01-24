@@ -124,6 +124,10 @@ axclError venc::stop() {
     return AXCL_SUCC;
 }
 
+axclError venc::query_status(AX_VENC_CHN_STATUS_T &status) {
+    return AXCL_VENC_QueryStatus(m_chn, &status);
+}
+
 axclError venc::register_sink(sinker* sink) {
     if (!sink) {
         LOG_MM_E(TAG, "sink of veChn {} is nil", m_chn);

@@ -18,7 +18,7 @@ class ppl_core final {
 public:
     ppl_core() = default;
 
-    axclError init(const axcl_ppl_init_param* param);
+    axclError init(axcl_ppl_init_param* param);
     axclError deinit();
 
     axclError create(axcl_ppl* ppl, const axcl_ppl_param* param);
