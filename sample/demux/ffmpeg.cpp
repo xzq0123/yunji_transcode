@@ -56,6 +56,7 @@ extern "C" {
 
 static constexpr const char *ffmpeg_demuxer_attr_frame_rate_control = "ffmpeg.demux.file.frc";
 static constexpr const char *ffmpeg_demuxer_attr_file_loop = "ffmpeg.demux.file.loop";
+static constexpr const char *ffmpeg_demuxer_attr_total_frame_count = "ffmpeg.demux.total_frame_count";
 
 struct ffmpeg_context {
     // input
@@ -107,13 +108,14 @@ struct ffmpeg_context {
     /* attribute */
     bool frame_rate_control = false;
     bool loop = false;
+    uint64_t total_count = 0;
 
 /**
  * just for debug:
  * check dispatch put and pop nalu data
  */
 //  #define __SAVE_NALU_DATA__
-#if defined(__SAVE_DEMUX_DATA__)
+#if defined(__SAVE_NALU_DATA__)
     FILE *fput = nullptr;
     FILE *fpop = nullptr;
     FILE *rtmp = nullptr;
@@ -129,9 +131,14 @@ static void ffmpeg_dispatch_thread(ffmpeg_context *context);
 
 int ffmpeg_create_demuxer(ffmpeg_demuxer *demuxer, const char *url, const char *rtmp_url, bool h265, int32_t device, stream_sink sink, uint64_t userdata) {
     if (!url || device <= 0 || !demuxer) {
+        if (demuxer) {
+            *demuxer = nullptr;
+        }
         SAMPLE_LOG_E("invalid parameters");
         return -EINVAL;
     }
+
+    *demuxer = nullptr;
 
     ffmpeg_context *context = new (std::nothrow) ffmpeg_context();
     if (!context) {
@@ -206,12 +213,14 @@ int ffmpeg_push_video_nalu(ffmpeg_demuxer demuxer, nalu_data *nalu) {
 
 int ffmpeg_start_demuxer(ffmpeg_demuxer demuxer) {
     ffmpeg_context *context = FFMPEG_CONTEXT(demuxer);
+
     char name[16];
     sprintf(name, "dispatch%d", context->cookie);
     context->dispatch_thread.start(name, ffmpeg_dispatch_thread, context);
 
     sprintf(name, "demux%d", context->cookie);
     context->demux_thread.start(name, ffmpeg_demux_thread, context);
+    context->demux_thread.detach();
     return 0;
 }
 
@@ -520,6 +529,8 @@ static int init_output_frame(AVFrame **frame, AVCodecContext *output_codec_conte
 
 /* Global timestamp for the audio frames. */
 static int64_t pts = 0;
+static AVRational *audio_time_src = NULL;
+static AVRational *audio_time_dest = NULL;
 static int encode_audio_frame(AVFrame *frame, AVFormatContext *output_format_context, AVCodecContext *output_codec_context, int *data_present) {
     /* Packet used for temporary storage. */
     AVPacket *output_packet;
@@ -566,6 +577,8 @@ static int encode_audio_frame(AVFrame *frame, AVFormatContext *output_format_con
     } else {
         *data_present = 1;
     }
+
+    av_packet_rescale_ts(output_packet, *audio_time_src, *audio_time_dest);
 
     output_packet->stream_index = 0;
     /* Write one audio frame from the temporary packet to the output file. */
@@ -615,7 +628,6 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
 
     int ret;
     char msg[64] = {0};
-    uint64_t count = 0;
 
     av_dump_format(context->avfmt_rtmp_ctx, 0, context->rtmp_url.c_str(), 1);
 
@@ -640,12 +652,13 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
         return;
     }
 
-#ifdef __SAVE_DEMUX_DATA__
+#ifdef __SAVE_NALU_DATA__
     context->fput = fopen("./fput.raw", "wb");
     context->rtmp = fopen("./rtmp.raw", "wb");
 #endif
 
     int frame_idx = 0;
+    context->total_count = 0;
     context->eof.reset();
     while (context->demux_thread.running()) {
         ret = av_read_frame(context->avfmt_in_ctx, avpkt);
@@ -701,7 +714,7 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                         return;
                     }
 
-                    ++count;
+                    ++context->total_count;
 
 #if defined(__SAVE_DEMUX_DATA__)
                     fwrite(avpkt->data, 1, avpkt->size, context->fput);
@@ -714,7 +727,7 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                     nalu.nalu = avpkt->data;
                     nalu.len = avpkt->size;
                     if (ret = context->fifo->push(nalu, -1); 0 != ret) {
-                        SAMPLE_LOG_E("[%d] push frame %ld len %d to fifo fail, ret = %d", context->cookie, count, nalu.len, ret);
+                        SAMPLE_LOG_E("[%d] push frame %ld len %d to fifo fail, ret = %d", context->cookie, context->total_count, nalu.len, ret);
                     }
 
                     while (context->fifo_v->size() > 0) {
@@ -744,13 +757,8 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                         avpkt->stream_index = context->video_track_id;
                         // SAMPLE_LOG_D("Video Seconds PTS = %f, DTS = %f", av_q2d(context->src_video->time_base) * (int64_t)nalu_v.pts, av_q2d(context->src_video->time_base) * (int64_t)nalu_v.dts);
 
-                        // write pts
                         AVRational time_base1 = context->src_video->time_base;
-                        // Duration between 2 frames (us)
                         int64_t calc_duration = (double)AV_TIME_BASE / av_q2d(context->src_video->r_frame_rate);
-                        // parameters
-                        // pts是播放时间戳,告诉播放器什么时候播放这一帧视频,PTS通常是按照递增顺序排列的,以保证正确的时间顺序和播放同步
-                        // dts是解码时间戳,告诉播放器什么时候解码这一帧视频
                         avpkt->pts = (double)(frame_idx * calc_duration) / (double)(av_q2d(time_base1) * AV_TIME_BASE);
                         avpkt->dts = avpkt->pts;
                         avpkt->duration = (double)calc_duration / (double)(av_q2d(time_base1) * AV_TIME_BASE);
@@ -762,8 +770,6 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                             avpkt->stream_index -= 1;
                         }
 
-                        // copy packet
-                        // convert PTS/DTS
                         avpkt->pts = av_rescale_q_rnd(avpkt->pts, context->src_video->time_base, context->dest_video->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
                         avpkt->dts = av_rescale_q_rnd(avpkt->dts, context->src_video->time_base, context->dest_video->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
                         avpkt->duration = av_rescale_q(avpkt->duration, context->src_video->time_base, context->dest_video->time_base);
@@ -852,7 +858,7 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
         avio_closep(&context->avfmt_rtmp_ctx->pb);
     }
 
-#ifdef __SAVE_DEMUX_DATA__
+#ifdef __SAVE_NALU_DATA__
     fflush(context->fput);
     fclose(context->fput);
 
@@ -864,7 +870,7 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
     ffmpeg_demux_eof(context);
 
     av_packet_free(&avpkt);
-    SAMPLE_LOG_I("[%d] demuxed    total %ld frames ---", context->cookie, count);
+    SAMPLE_LOG_I("[%d] demuxed    total %ld frames ---", context->cookie, context->total_count);
 }
 
 static int ffmpeg_init_demuxer(ffmpeg_context *context) {
@@ -1008,6 +1014,7 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
                     SAMPLE_LOG_E("avformat_new_stream\n");
                     break;
                 }
+                audio_time_dest = &context->dest_audio->time_base;
 
                 // encoder (aax编码 码率128k 采样率48khz 双声道)
                 const AVCodec *output_codec = avcodec_find_encoder_by_name("aac");
@@ -1029,6 +1036,7 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
 
                 /* Set the sample rate for the container. */
                 enc_ctx->time_base = (AVRational){1, 48000};
+                audio_time_src = &enc_ctx->time_base;
 
                 if (context->avfmt_rtmp_ctx->oformat->flags & AVFMT_GLOBALHEADER)
                     enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
@@ -1211,6 +1219,23 @@ int ffmpeg_set_demuxer_attr(ffmpeg_demuxer demuxer, const char *name, const void
     } else if (0 == strcmp(name, "ffmpeg.rtmp.height")) {
         context->dest_video->codecpar->height = *(reinterpret_cast<const int *>(attr));
         SAMPLE_LOG_I("[%d] set %s to %d", context->cookie, "ffmpeg.rtmp.height", context->dest_video->codecpar->height);
+    } else {
+        SAMPLE_LOG_E("[%d] unsupport attribute %s", context->cookie, name);
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+int ffmpeg_get_demuxer_attr(ffmpeg_demuxer demuxer, const char *name, void *attr) {
+    if (!name) {
+        SAMPLE_LOG_E("nil attribute name");
+        return -EINVAL;
+    }
+
+    ffmpeg_context *context = FFMPEG_CONTEXT(demuxer);
+    if (0 == strcmp(name, ffmpeg_demuxer_attr_total_frame_count)) {
+        *(reinterpret_cast<uint64_t *>(attr)) = context->total_count;
     } else {
         SAMPLE_LOG_E("[%d] unsupport attribute %s", context->cookie, name);
         return -EINVAL;

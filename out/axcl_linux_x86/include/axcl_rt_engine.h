@@ -32,7 +32,7 @@ extern "C" {
  * @param npuKind [IN]     Initialize the runtime engine with
  * the specified VNPU type
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineInit(axclrtEngineVNpuKind npuKind);
@@ -46,7 +46,7 @@ axclError axclrtEngineInit(axclrtEngineVNpuKind npuKind);
  *
  * @param npuKind [OUT]      VNPU type
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineGetVNpuKind(axclrtEngineVNpuKind *npuKind);
@@ -62,7 +62,7 @@ axclError axclrtEngineGetVNpuKind(axclrtEngineVNpuKind *npuKind);
  * @par Restriction
  * User needs to call axclrtEngineInit to initialize the runtime
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineFinalize();
@@ -80,7 +80,7 @@ axclError axclrtEngineFinalize();
  * @param modelId [OUT]      Model ID generated after
  *        the system finishes loading the model
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineLoadFromFile(const char *modelPath, uint64_t *modelId);
@@ -103,7 +103,7 @@ axclError axclrtEngineLoadFromFile(const char *modelPath, uint64_t *modelId);
  * @param modelId [OUT]      Model ID generated after
  *        the system finishes loading the model
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineLoadFromMem(const void *model, uint64_t modelSize, uint64_t *modelId);
@@ -114,7 +114,7 @@ axclError axclrtEngineLoadFromMem(const void *model, uint64_t modelSize, uint64_
  *
  * @param  modelId [IN]      Model id to be unloaded
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineUnload(uint64_t modelId);
@@ -125,7 +125,7 @@ axclError axclrtEngineUnload(uint64_t modelId);
   *
   * @param  modelId [IN]      Model id
   *
-  * @retval AXCL_SUCCESS The function is successfully executed.
+  * @retval AXCL_SUCC The function is successfully executed.
   * @retval OtherValues Failure
  **/
 const char* axclrtEngineGetModelCompilerVersion(uint64_t modelId);
@@ -144,7 +144,7 @@ const char* axclrtEngineGetModelCompilerVersion(uint64_t modelId);
  * @param  modelId [IN]      Model id
  * @param  set [OUT]         The affinity set
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineCreateContext | axclrtEngineGetAffinity
@@ -158,7 +158,7 @@ axclError axclrtEngineSetAffinity(uint64_t modelId, axclrtEngineSet set);
  * @param  modelId [IN]      Model id
  * @param  set [OUT]         The affinity set
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineCreateContext | axclrtEngineSetAffinity
@@ -177,7 +177,7 @@ axclError axclrtEngineGetAffinity(uint64_t modelId, axclrtEngineSet *set);
  * @param  sysSize [OUT]     The amount of working system memory for model executed
  * @param  cmmSize [OUT]     The amount of cmm memory for model executed
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineGetUsage(const char *modelPath, int64_t *sysSize, int64_t *cmmSize);
@@ -199,7 +199,7 @@ axclError axclrtEngineGetUsage(const char *modelPath, int64_t *sysSize, int64_t 
  * @param  sysSize [OUT]     The amount of working system memory for model executed
  * @param  cmmSize [OUT]     The amount of cmm memory for model executed
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineGetUsageFromMem(const void *model, uint64_t modelSize, int64_t *sysSize, int64_t *cmmSize);
@@ -216,7 +216,7 @@ axclError axclrtEngineGetUsageFromMem(const void *model, uint64_t modelSize, int
  * @param  sysSize [OUT]     The amount of working system memory for model executed
  * @param  cmmSize [OUT]     The amount of cmm memory for model executed
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineGetUsageFromModelId(uint64_t modelId, int64_t *sysSize, int64_t *cmmSize);
@@ -231,7 +231,7 @@ axclError axclrtEngineGetUsageFromModelId(uint64_t modelId, int64_t *sysSize, in
  * @param  modelPath [IN]     Model path to get model type
  * @param  modelType [OUT]   Model type
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineGetModelType(const char *modelPath, axclrtEngineModelKind *modelType);
@@ -251,7 +251,7 @@ axclError axclrtEngineGetModelType(const char *modelPath, axclrtEngineModelKind 
  * @param  modelSize [IN]    Model data size
  * @param  modelType [IN]    Model type
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineGetModelTypeFromMem(const void *model, uint64_t modelSize, axclrtEngineModelKind *modelType);
@@ -266,7 +266,7 @@ axclError axclrtEngineGetModelTypeFromMem(const void *model, uint64_t modelSize,
   * @param  modelId [IN]      Model id
   * @param  modelType [IN]    Model type
   *
-  * @retval AXCL_SUCCESS The function is successfully executed.
+  * @retval AXCL_SUCC The function is successfully executed.
   * @retval OtherValues Failure
  **/
 axclError axclrtEngineGetModelTypeFromModelId(uint64_t modelId, axclrtEngineModelKind *modelType);
@@ -284,7 +284,7 @@ axclError axclrtEngineGetModelTypeFromModelId(uint64_t modelId, axclrtEngineMode
  * @par Restriction
  * Users should call axclrtEngineDestroyIOInfo to release the axclrtEngineIOInfo after using it.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineDestroyIOInfo | axclrtEngineGetIOInfoByIndex
@@ -297,7 +297,7 @@ axclError axclrtEngineGetIOInfo(uint64_t modelId, axclrtEngineIOInfo *ioInfo);
  *
  * @param  ioInfo [IN]       axclrtEngineIOInfo pointer
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineDestroyIOInfo(axclrtEngineIOInfo ioInfo);
@@ -317,7 +317,7 @@ axclError axclrtEngineDestroyIOInfo(axclrtEngineIOInfo ioInfo);
  * @param  ioInfo [IN]      axclrtEngineIOInfo pointer
  * @param  count [OUT]      Shape groups count
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex
@@ -407,7 +407,7 @@ const char *axclrtEngineGetOutputNameByIndex(axclrtEngineIOInfo ioInfo, uint32_t
  * @param ioInfo [IN]        model description
  * @param name [IN]          input tensor name
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 int32_t axclrtEngineGetInputIndexByName(axclrtEngineIOInfo ioInfo, const char *name);
@@ -419,7 +419,7 @@ int32_t axclrtEngineGetInputIndexByName(axclrtEngineIOInfo ioInfo, const char *n
  * @param ioInfo [IN]        model description
  * @param name [IN]          output tensor name
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 int32_t axclrtEngineGetOutputIndexByName(axclrtEngineIOInfo ioInfo, const char *name);
@@ -436,7 +436,7 @@ int32_t axclrtEngineGetOutputIndexByName(axclrtEngineIOInfo ioInfo, const char *
  * @par Restriction
  * Users should release the axclrtEngineIODims after using it.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumInputs
@@ -451,7 +451,7 @@ axclError axclrtEngineGetInputDims(axclrtEngineIOInfo ioInfo, uint32_t group, ui
  * @param index [IN]         input io index
  * @param type [IN]          input IO data type
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumInputs
@@ -466,7 +466,7 @@ int32_t axclrtEngineGetInputDataType(axclrtEngineIOInfo ioInfo, uint32_t index, 
  * @param index [IN]         output io index
  * @param type [IN]          output IO data type
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumOutputs
@@ -481,7 +481,7 @@ int32_t axclrtEngineGetOutputDataType(axclrtEngineIOInfo ioInfo, uint32_t index,
  * @param index [IN]         input io index
  * @param layout [IN]        input IO data layout
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumInputs
@@ -496,7 +496,7 @@ int32_t axclrtEngineGetInputDataLayout(axclrtEngineIOInfo ioInfo, uint32_t index
  * @param index [IN]         output io index
  * @param layout [IN]        output IO data layout
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumOutputs
@@ -515,7 +515,7 @@ int32_t axclrtEngineGetOutputDataLayout(axclrtEngineIOInfo ioInfo, uint32_t inde
   * @par Restriction
   * Users should release the axclrtEngineIODims after using it.
   *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineGetIOInfo | axclrtEngineGetIOInfoByIndex | axclrtEngineGetNumOutputs
@@ -532,7 +532,7 @@ axclError axclrtEngineGetOutputDims(axclrtEngineIOInfo ioInfo, uint32_t group, u
  * @par Restriction
  * Users should call axclrtEngineDestroyIO to release the axclrtEngineIO after using it.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineCreateIO(axclrtEngineIOInfo ioInfo, axclrtEngineIO *io);
@@ -543,7 +543,7 @@ axclError axclrtEngineCreateIO(axclrtEngineIOInfo ioInfo, axclrtEngineIO *io);
  *
  * @param  io [IN]           Pointer to axclrtEngineIO to be destroyed
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineDestroyIO(axclrtEngineIO io);
@@ -561,7 +561,7 @@ axclError axclrtEngineDestroyIO(axclrtEngineIO io);
  * The data buffer is Device memory,
  * and requires user application and release.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineSetInputBufferByIndex(axclrtEngineIO io, uint32_t index, const void *dataBuffer, uint64_t size);
@@ -579,7 +579,7 @@ axclError axclrtEngineSetInputBufferByIndex(axclrtEngineIO io, uint32_t index, c
  * The data buffer is Device memory,
  * and requires user application and release.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineSetOutputBufferByIndex(axclrtEngineIO io, uint32_t index, const void *dataBuffer, uint64_t size);
@@ -597,7 +597,7 @@ axclError axclrtEngineSetOutputBufferByIndex(axclrtEngineIO io, uint32_t index, 
  * The data buffer is Device memory,
  * and requires user application and release.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineSetInputBufferByName(axclrtEngineIO io, const char *name, const void *dataBuffer, uint64_t size);
@@ -615,7 +615,7 @@ axclError axclrtEngineSetInputBufferByName(axclrtEngineIO io, const char *name, 
  * The data buffer is Device memory,
  * and requires user application and release.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineSetOutputBufferByName(axclrtEngineIO io, const char *name, const void *dataBuffer, uint64_t size);
@@ -633,7 +633,7 @@ axclError axclrtEngineSetOutputBufferByName(axclrtEngineIO io, const char *name,
  * The data buffer is Device memory,
  * and requires user application and release.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineGetInputBufferByIndex(axclrtEngineIO io, uint32_t index, void **dataBuffer, uint64_t *size);
@@ -651,7 +651,7 @@ axclError axclrtEngineGetInputBufferByIndex(axclrtEngineIO io, uint32_t index, v
  * The data buffer is Device memory,
  * and requires user application and release.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineGetOutputBufferByIndex(axclrtEngineIO io, uint32_t index, void **dataBuffer, uint64_t *size);
@@ -668,7 +668,7 @@ axclError axclrtEngineGetOutputBufferByIndex(axclrtEngineIO io, uint32_t index, 
  * The data buffer is Device memory,
  * and requires user application and release.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineGetInputBufferByName(axclrtEngineIO io, const char *name, void **dataBuffer, uint64_t *size);
@@ -685,7 +685,7 @@ axclError axclrtEngineGetInputBufferByName(axclrtEngineIO io, const char *name, 
  * The data buffer is Device memory,
  * and requires user application and release.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineGetOutputBufferByName(axclrtEngineIO io, const char *name, void **dataBuffer, uint64_t *size);
@@ -699,7 +699,7 @@ axclError axclrtEngineGetOutputBufferByName(axclrtEngineIO io, const char *name,
  * @param  io [IN]           Model inference IOs
  * @param  batchSize [IN]    Number of images processed at a time during model
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineCreateContext |
@@ -721,7 +721,7 @@ axclError axclrtEngineSetDynamicBatchSize(axclrtEngineIO io, uint32_t batchSize)
  * @param  modelId [IN]      Model id
  * @param  contextId [OUT]   The created context id
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclrtEngineLoadFromFile | axclrtEngineLoadFromMem
@@ -737,7 +737,7 @@ axclError axclrtEngineCreateContext(uint64_t modelId, uint64_t *contextId);
  * @param  group [IN]        Model shape group index
  * @param  io [IN]           Model inference IOs
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtEngineExecute(uint64_t modelId, uint64_t contextId, uint32_t group, axclrtEngineIO io);
@@ -752,7 +752,7 @@ axclError axclrtEngineExecute(uint64_t modelId, uint64_t contextId, uint32_t gro
  * @param  io [IN]           Model inference IOs
  * @param  stream [IN]       stream
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
  *
  * @see axclLoadFromFile | axclLoadFromMem | axclLoadFromFileWithMem |

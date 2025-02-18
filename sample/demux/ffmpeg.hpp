@@ -84,7 +84,8 @@ int ffmpeg_set_demuxer_sink(ffmpeg_demuxer demuxer, stream_sink sink, uint64_t u
  *                                                   type            value
  *  ffmpeg.demux.file.frc                    [W]   int32_t   1: enable, 0: disable(default)
  *  ffmpeg.demux.file.loop                   [W]   int32_t   1: loop, 0: once(default)
+ *  ffmpeg.demux.total_frame_count           [R]   uint64_t
  */
 int ffmpeg_set_demuxer_attr(ffmpeg_demuxer demuxer, const char *name, const void *attr);
-
+int ffmpeg_get_demuxer_attr(ffmpeg_demuxer demuxer, const char *name, void *attr);
 int ffmpeg_push_video_nalu(ffmpeg_demuxer demuxer, nalu_data *nalu);

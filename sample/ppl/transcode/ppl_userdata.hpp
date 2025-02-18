@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -24,7 +25,7 @@ struct ppl_user_data {
     int32_t vdec;
     int32_t ivps;
     int32_t venc;
-    uint64_t frame_count;
+    std::atomic<uint64_t> frame_count;
     FILE *fp;
     ffmpeg_demuxer demuxer;
     AX_PAYLOAD_TYPE_E payload;

@@ -35,7 +35,7 @@ extern "C" {
  * @param size [IN]          Size of memory to allocate
  * @param policy [IN]        Memory allocation policy
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtMalloc(void **devPtr, size_t size, axclrtMemMallocPolicy policy);
@@ -48,7 +48,7 @@ axclError axclrtMalloc(void **devPtr, size_t size, axclrtMemMallocPolicy policy)
  * @param size [IN]          Size of memory to allocate
  * @param policy [IN]        Memory allocation policy
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtMallocCached(void **devPtr, size_t size, axclrtMemMallocPolicy policy);
@@ -59,7 +59,7 @@ axclError axclrtMallocCached(void **devPtr, size_t size, axclrtMemMallocPolicy p
  *
  * @param devPtr [IN]        Pointer to device memory to free
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtFree(void *devPtr);
@@ -71,7 +71,7 @@ axclError axclrtFree(void *devPtr);
  * @param devPtr [IN]        Pointer to device memory to flush
  * @param size [IN]          Size of memory to flush
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtMemFlush(void *devPtr, size_t size);
@@ -83,7 +83,7 @@ axclError axclrtMemFlush(void *devPtr, size_t size);
  * @param devPtr [IN]        Pointer to device memory to invalidate
  * @param size [IN]          Size of memory to invalidate
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtMemInvalidate(void *devPtr, size_t size);
@@ -95,7 +95,7 @@ axclError axclrtMemInvalidate(void *devPtr, size_t size);
  * @param hostPtr [OUT]      Pointer to allocated host memory
  * @param size [IN]          Size of memory to allocate
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtMallocHost(void **hostPtr, size_t size);
@@ -106,7 +106,7 @@ axclError axclrtMallocHost(void **hostPtr, size_t size);
  *
  * @param hostPtr [IN]       Pointer to host memory to free
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtFreeHost(void *hostPtr);
@@ -119,7 +119,7 @@ axclError axclrtFreeHost(void *hostPtr);
  * @param value [IN]         Value to set
  * @param count [IN]         Number of bytes to set
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtMemset(void *devPtr, uint8_t value, size_t count);
@@ -133,7 +133,7 @@ axclError axclrtMemset(void *devPtr, uint8_t value, size_t count);
  * @param count [IN]         Number of bytes to copy
  * @param kind [IN]          Memory copy kind
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtMemcpy(void *dstPtr, const void *srcPtr, size_t count, axclrtMemcpyKind kind);
@@ -149,7 +149,7 @@ axclError axclrtMemcpy(void *dstPtr, const void *srcPtr, size_t count, axclrtMem
  * @par Restriction
  * Only available for device memory.
  *
- * @retval AXCL_SUCCESS The function is successfully executed.
+ * @retval AXCL_SUCC The function is successfully executed.
  * @retval OtherValues Failure
 **/
 axclError axclrtMemcmp(const void *devPtr1, const void *devPtr2, size_t count);

@@ -34,6 +34,7 @@ AX_S32 AX_PCIe_OpenDmaDev(void);
 AX_S32 AX_PCIe_CloseDmaDev(AX_S32 s32PCIeDmaHandle);
 AX_S32 AX_PCIe_CreatDmaTask(AX_S32 s32PCIeDmaHandle, AX_PCIE_DMA_CH_TYPE_E enDir, AX_U64 u64Src, AX_U64 u64Dst, AX_U32 u32Len, AX_U32 u32Last);
 AX_S32 AX_PCIe_CreatDmaMultiTask(AX_S32 s32PCIeDmaHandle, AX_BOOL bIsRead, AX_U32 u32Count, AX_PCIE_DMA_BLOCK_T stDmaBlk[]);
+AX_S32 AX_PCIe_CreatDmaLlpTask(AX_S32 s32PCIeDmaHandle, AX_PCIE_DMA_BLOCK_T stDmaBlk[], AX_U32 u32Count, AX_BOOL bIsRead);
 
 AX_S32 AX_PCIe_InitRcMsg(AX_U32 u32PortCnt, AX_U32 u32PortBaseNum);
 AX_S32 AX_PCIe_InitEpMsg(AX_U32 u32PortCnt, AX_U32 u32PortBaseNum);

@@ -78,6 +78,7 @@ int main(int argc, char *argv[]) {
     a.add<std::string>("json", '\0', "axcl.json path", false, "./axcl.json");
     a.add<int32_t>("loop", '\0', "1: loop demux for local file  0: no loop(default)", false, 0, cmdline::oneof(0, 1));
     a.add<int32_t>("dump", '\0', "1: dump file  0: no dump(default)", false, 0, cmdline::oneof(0, 1));
+    a.add("ut", '\0', "unittest");
     a.parse_check(argc, argv);
     const std::string url = a.get<std::string>("url");
     const std::string rtmp_url = a.get<std::string>("rtmp_url");
@@ -91,6 +92,12 @@ int main(int argc, char *argv[]) {
     if (dump) {
         SAMPLE_LOG_W("if enable dump, disable loop automatically");
         loop = 0;
+    }
+    const bool is_ut = a.exist("ut");
+    if (device <= 0 && !is_ut) {
+        /* if not ut, valid device is mandatory */
+        SAMPLE_LOG_E("please input the device by [-d, --device]");
+        return 1;
     }
 
     axclError ret;
@@ -215,6 +222,11 @@ int main(int argc, char *argv[]) {
                      ivps_out_depth, ivps_engine);
         SAMPLE_LOG_I("pid %d: VENC attr ==> fifo depth: in %d, out %d", pid, venc_in_depth, venc_out_depth);
 
+        if (is_ut) {
+            int32_t wait_timeout = 2000;
+            axcl_ppl_set_attr(ppl, "axcl.ppl.transcode.venc.stop.wait", reinterpret_cast<const void *>(&wait_timeout));
+        }
+
         ffmpeg_set_demuxer_sink(demuxer, {handle_down_streaming_nalu_frame}, reinterpret_cast<uint64_t>(ppl_info));
     }
 
@@ -250,13 +262,32 @@ int main(int argc, char *argv[]) {
     axcl_ppl_stop(ppl);
     ffmpeg_stop_demuxer(demuxer);
 
+    if (is_ut) {
+        uint64_t demux_frame_count = 0;
+        ffmpeg_get_demuxer_attr(demuxer, "ffmpeg.demux.total_frame_count", &demux_frame_count);
+        if (demux_frame_count > 0) {
+            if (demux_frame_count < ppl_info->frame_count.load() - 1) {
+                SAMPLE_LOG_E("(pid %d) transcoded frame count %ld is not equal to demux frame count %ld", static_cast<uint32_t>(getpid()),
+                             ppl_info->frame_count.load(), demux_frame_count);
+                while (1) {
+                    sleep(1);
+                }
+            } else {
+                SAMPLE_LOG_I("(pid %d) transcoded frame count %ld, demux frame count %ld", static_cast<uint32_t>(getpid()),
+                             ppl_info->frame_count.load(), demux_frame_count);
+            }
+        } else {
+            SAMPLE_LOG_E("(pid %d) demux frame count is 0", static_cast<uint32_t>(getpid()));
+        }
+    }
+
     /**
      * @brief Destroy ppl and deinitialize system.
      */
     axcl_ppl_destroy(ppl);
     axcl_ppl_deinit();
 
-    SAMPLE_LOG_I("total transcoded frames: %ld", ppl_info->frame_count);
+    SAMPLE_LOG_I("total transcoded frames: %ld", ppl_info->frame_count.load());
     SAMPLE_LOG_I("============== %s sample exited %s %s pid %d ==============\n", AXCL_BUILD_VERSION, __DATE__, __TIME__, pid);
     return 0;
 }
@@ -338,7 +369,6 @@ static axcl_ppl_transcode_param get_transcode_ppl_param_from_stream(const struct
     return transcode_param;
 }
 
-//这个回调就是ffmpeg解码之后的回调。
 static void handle_down_streaming_nalu_frame(const struct stream_data *nalu, uint64_t userdata) {
     ppl_user_data *ppl_info = reinterpret_cast<ppl_user_data *>(userdata);
 
@@ -355,7 +385,6 @@ static void handle_down_streaming_nalu_frame(const struct stream_data *nalu, uin
     // SAMPLE_LOG_I("axcl_ppl_send_stream(pid: %d)", static_cast<uint32_t>(ppl_info->pid));
 }
 
-//这个线程应该是编码之后回调的线程
 static void handle_encoded_stream_callback(axcl_ppl ppl, const axcl_ppl_encoded_stream *stream, AX_U64 userdata) {
     ppl_user_data *ppl_info = reinterpret_cast<ppl_user_data *>(userdata);
     /**
@@ -373,5 +402,5 @@ static void handle_encoded_stream_callback(axcl_ppl ppl, const axcl_ppl_encoded_
     nalu.len = stream->stPack.u32Len;
     ffmpeg_push_video_nalu(ppl_info->demuxer, &nalu);
 
-    ++ppl_info->frame_count;
+    ppl_info->frame_count++;
 }
