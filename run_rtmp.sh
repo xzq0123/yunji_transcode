@@ -14,7 +14,7 @@ shift   # 移除第一个参数，保留其他参数
 rm -f *.dump.pid*
 
 # 设置动态库路径
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/axcl/ffmpeg
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/axcl/ffmpeg
 
 # 获取PCI设备列表
 PCI_IDS=($(lspci | grep 650 | cut -d ":" -f 1))
@@ -26,9 +26,9 @@ for PCI_ID in "${PCI_IDS[@]}"; do
 
     # 循环启动指定次数的流
     for ((i = 1; i <= NUM; i++)); do
-        RTMP_URL="rtmp://192.168.0.134:1935/live/pci${PCI_DECIMAL}_stream${i}"
+        RTMP_URL="rtmp://192.168.0.7/live/pci${PCI_DECIMAL}_stream${i}"
         echo "Launching stream $i for PCI ID $PCI_DECIMAL to $RTMP_URL"
-        ./axcl_sample_transcode "$@" -i ./test.mp4 --loop 1 -d $PCI_DECIMAL -o $RTMP_URL &
+        ./axcl_sample_transcode -d $PCI_DECIMAL -i rtmp://192.168.0.7/live/axcl -o $RTMP_URL "$@" &
     done
 done
 

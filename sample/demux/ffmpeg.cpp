@@ -649,12 +649,6 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
         return;
     }
 
-    AVPacket *avpkt = av_packet_alloc();
-    if (!avpkt) {
-        SAMPLE_LOG_E("[%d] av_packet_alloc() fail!", context->cookie);
-        return;
-    }
-
 #ifdef __SAVE_NALU_DATA__
     context->fput = fopen("./fput.raw", "wb");
     context->rtmp = fopen("./rtmp.raw", "wb");
@@ -663,6 +657,12 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
     context->total_count = 0;
     context->eof.reset();
     while (context->demux_thread.running()) {
+        AVPacket *avpkt = av_packet_alloc();
+        if (!avpkt) {
+            SAMPLE_LOG_E("[%d] av_packet_alloc() fail!", context->cookie);
+            return;
+        }
+
         ret = av_read_frame(context->avfmt_in_ctx, avpkt);
         if (ret < 0) {
             if (AVERROR_EOF == ret) {
@@ -742,46 +742,54 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                         fwrite(nalu_v.nalu, 1, nalu_v.len, context->rtmp);
 #endif
 
+                        AVPacket *video_packet = av_packet_alloc();
+                        if (!video_packet) {
+                            SAMPLE_LOG_E("[%d] av_packet_alloc() fail!", context->cookie);
+                            return;
+                        }
+
                         uint8_t *data = nullptr;
                         if (nalu_v.len2 > 0) {
-                            avpkt->size = nalu_v.len + nalu_v.len2;
-                            data = reinterpret_cast<uint8_t *>(malloc(avpkt->size));
+                            video_packet->size = nalu_v.len + nalu_v.len2;
+                            data = reinterpret_cast<uint8_t *>(malloc(video_packet->size));
                             memcpy(data, nalu_v.nalu, nalu_v.len);
                             memcpy(data + nalu_v.len, nalu_v.nalu2, nalu_v.len2);
-                            avpkt->data = data;
+                            video_packet->data = data;
                         } else {
-                            avpkt->size = nalu_v.len;
-                            avpkt->data = nalu_v.nalu;
+                            video_packet->size = nalu_v.len;
+                            video_packet->data = nalu_v.nalu;
                         }
-                        avpkt->stream_index = context->video_track_id;
+                        video_packet->stream_index = context->video_track_id;
+                        video_packet->time_base = context->src_video->time_base;
 
                         AVRational time_base1 = context->src_video->time_base;
                         int64_t calc_duration = (double)AV_TIME_BASE / av_q2d(context->src_video->r_frame_rate);
-                        avpkt->pts = (double)(context->total_count * calc_duration) / (double)(av_q2d(time_base1) * AV_TIME_BASE);
-                        avpkt->dts = avpkt->pts;
-                        avpkt->duration = (double)calc_duration / (double)(av_q2d(time_base1) * AV_TIME_BASE);
+                        video_packet->pts = (double)(context->total_count * calc_duration) / (double)(av_q2d(time_base1) * AV_TIME_BASE);
+                        video_packet->dts = video_packet->pts;
+                        video_packet->duration = (double)calc_duration / (double)(av_q2d(time_base1) * AV_TIME_BASE);
 
                         ++context->total_count;
                         if (context->avfmt_in_ctx->nb_streams > 2) {
-                            avpkt->stream_index -= 1;
+                            video_packet->stream_index -= 1;
                         }
 
-                        avpkt->pts = av_rescale_q_rnd(avpkt->pts, context->src_video->time_base, context->dest_video->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-                        avpkt->dts = av_rescale_q_rnd(avpkt->dts, context->src_video->time_base, context->dest_video->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-                        avpkt->duration = av_rescale_q(avpkt->duration, context->src_video->time_base, context->dest_video->time_base);
-                        avpkt->pos = -1;
+                        video_packet->pts = av_rescale_q_rnd(video_packet->pts, context->src_video->time_base, context->dest_video->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                        video_packet->dts = av_rescale_q_rnd(video_packet->dts, context->src_video->time_base, context->dest_video->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                        video_packet->duration = av_rescale_q(video_packet->duration, context->src_video->time_base, context->dest_video->time_base);
+                        video_packet->pos = -1;
 
                         // SAMPLE_LOG_D("Video Seconds PTS = %f, DTS = %f", av_q2d(context->dest_video->time_base) * (int64_t)nalu_v.pts, av_q2d(context->dest_video->time_base) * (int64_t)nalu_v.dts);
-                        ret = av_interleaved_write_frame(context->avfmt_rtmp_ctx, avpkt);
+                        ret = av_interleaved_write_frame(context->avfmt_rtmp_ctx, video_packet);
 
                         if (data) {
                             free(data);
                         }
+                        av_packet_free(&video_packet);
                         context->fifo_v->skip(total_len);
 
                         if (ret < 0) {
-                            SAMPLE_LOG_E("Video write frame: %s", context->cookie, AVERRMSG(ret, msg));
-                            break;
+                            // SAMPLE_LOG_E("Video write frame: %s", context->cookie, AVERRMSG(ret, msg));
+                            goto cleanup;
                         }
                     }
                 }
@@ -838,9 +846,10 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                 }
             }
         }
-        av_packet_unref(avpkt);
+        av_packet_free(&avpkt);
     }
 
+cleanup:
     // write file trailer
     ret = av_write_trailer(context->avfmt_rtmp_ctx);
     if (ret < 0) {
@@ -862,7 +871,6 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
     /* notify eof */
     ffmpeg_demux_eof(context);
 
-    av_packet_free(&avpkt);
     SAMPLE_LOG_I("[%d] demuxed    total %ld frames ---", context->cookie, context->total_count);
 }
 
@@ -929,12 +937,12 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
                 } else if (context->encodec == AV_CODEC_ID_HEVC) {
                     const AVCodec *encoder = avcodec_find_encoder_by_name("libx265");
                     if (!encoder) {
-                        av_log(NULL, AV_LOG_FATAL, "Necessary encoder not found\n");
+                        SAMPLE_LOG_E("Necessary encoder not found");
                         return AVERROR_INVALIDDATA;
                     }
                     AVCodecContext *enc_ctx = avcodec_alloc_context3(encoder);
                     if (!enc_ctx) {
-                        av_log(NULL, AV_LOG_FATAL, "Failed to allocate the encoder context\n");
+                        SAMPLE_LOG_E("Failed to allocate the encoder context");
                         return AVERROR(ENOMEM);
                     }
 
@@ -951,12 +959,12 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
                     /* Third parameter can be used to pass settings to encoder */
                     ret = avcodec_open2(enc_ctx, encoder, NULL);
                     if (ret < 0) {
-                        av_log(NULL, AV_LOG_ERROR, "Cannot open %s encoder for stream #%u\n", encoder->name, i);
+                        SAMPLE_LOG_E("Cannot open %s encoder for stream #%u", encoder->name, i);
                         return ret;
                     }
                     ret = avcodec_parameters_from_context(context->dest_video->codecpar, enc_ctx);
                     if (ret < 0) {
-                        av_log(NULL, AV_LOG_ERROR, "Failed to copy encoder parameters to output stream #%u\n", i);
+                        SAMPLE_LOG_E("Failed to copy encoder parameters to output stream #%u", i);
                         return ret;
                     }
 
