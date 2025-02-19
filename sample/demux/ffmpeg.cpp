@@ -407,8 +407,8 @@ static int init_converted_samples(uint8_t ***converted_input_samples, AVCodecCon
      * Allocate memory for the samples of all channels in one consecutive
      * block for convenience. */
     if ((ret = av_samples_alloc_array_and_samples(converted_input_samples, NULL,
-                                                  output_codec_context->ch_layout.nb_channels, frame_size,
-                                                  output_codec_context->sample_fmt, 0)) < 0) {
+             output_codec_context->ch_layout.nb_channels, frame_size,
+             output_codec_context->sample_fmt, 0)) < 0) {
         fprintf(stderr, "Could not allocate converted input samples (ret '%s')\n", AVERRMSG(ret, msg));
         return ret;
     }
@@ -447,8 +447,8 @@ static int add_samples_to_fifo(AVAudioFifo *fifo, uint8_t **converted_input_samp
 }
 
 static int read_decode_convert_and_store(AVAudioFifo *fifo, AVPacket *input_packet,
-                                         AVFormatContext *input_format_context, AVCodecContext *input_codec_context,
-                                         AVCodecContext *output_codec_context, SwrContext *resampler_context, int *finished) {
+    AVFormatContext *input_format_context, AVCodecContext *input_codec_context,
+    AVCodecContext *output_codec_context, SwrContext *resampler_context, int *finished) {
     /* Temporary storage of the input samples of the frame read from the file. */
     AVFrame *input_frame = NULL;
     /* Temporary storage for the converted input samples. */
@@ -459,7 +459,7 @@ static int read_decode_convert_and_store(AVAudioFifo *fifo, AVPacket *input_pack
     /* Initialize temporary storage for one input frame. */
     if (!(input_frame = av_frame_alloc())) {
         fprintf(stderr, "Could not allocate input frame\n");
-        return AVERROR(ENOMEM);
+        goto cleanup;
     }
 
     /* Decode one frame worth of audio samples. */
@@ -467,7 +467,7 @@ static int read_decode_convert_and_store(AVAudioFifo *fifo, AVPacket *input_pack
         goto cleanup;
     /* If we are at the end of the file and there are no more samples
      * in the decoder which are delayed, we are actually finished.
-     * This must not be treated as an ret. */
+     * This must not be treated as an error. */
     if (*finished) {
         ret = 0;
         goto cleanup;
@@ -491,7 +491,10 @@ static int read_decode_convert_and_store(AVAudioFifo *fifo, AVPacket *input_pack
     ret = 0;
 
 cleanup:
-    // av_frame_free(&input_frame);
+    if (converted_input_samples)
+        av_freep(&converted_input_samples[0]);
+    av_freep(&converted_input_samples);
+    av_frame_free(&input_frame);
 
     return ret;
 }
@@ -529,6 +532,7 @@ static int init_output_frame(AVFrame **frame, AVCodecContext *output_codec_conte
 
 /* Global timestamp for the audio frames. */
 static int64_t pts = 0;
+static int64_t audio_index = 0;
 static AVRational *audio_time_src = NULL;
 static AVRational *audio_time_dest = NULL;
 static int encode_audio_frame(AVFrame *frame, AVFormatContext *output_format_context, AVCodecContext *output_codec_context, int *data_present) {
@@ -578,10 +582,9 @@ static int encode_audio_frame(AVFrame *frame, AVFormatContext *output_format_con
         *data_present = 1;
     }
 
-    av_packet_rescale_ts(output_packet, *audio_time_src, *audio_time_dest);
+    output_packet->stream_index = audio_index;
 
-    output_packet->stream_index = 0;
-    /* Write one audio frame from the temporary packet to the output file. */
+    av_packet_rescale_ts(output_packet, *audio_time_src, *audio_time_dest);
     if (*data_present &&
         (ret = av_interleaved_write_frame(output_format_context, output_packet)) < 0) {
         fprintf(stderr, "Could not write frame (ret '%s')\n", AVERRMSG(ret, msg));
@@ -657,7 +660,6 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
     context->rtmp = fopen("./rtmp.raw", "wb");
 #endif
 
-    int frame_idx = 0;
     context->total_count = 0;
     context->eof.reset();
     while (context->demux_thread.running()) {
@@ -714,8 +716,6 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                         return;
                     }
 
-                    ++context->total_count;
-
 #if defined(__SAVE_DEMUX_DATA__)
                     fwrite(avpkt->data, 1, avpkt->size, context->fput);
 #endif
@@ -753,19 +753,15 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                             avpkt->size = nalu_v.len;
                             avpkt->data = nalu_v.nalu;
                         }
-
                         avpkt->stream_index = context->video_track_id;
-                        // SAMPLE_LOG_D("Video Seconds PTS = %f, DTS = %f", av_q2d(context->src_video->time_base) * (int64_t)nalu_v.pts, av_q2d(context->src_video->time_base) * (int64_t)nalu_v.dts);
 
                         AVRational time_base1 = context->src_video->time_base;
                         int64_t calc_duration = (double)AV_TIME_BASE / av_q2d(context->src_video->r_frame_rate);
-                        avpkt->pts = (double)(frame_idx * calc_duration) / (double)(av_q2d(time_base1) * AV_TIME_BASE);
+                        avpkt->pts = (double)(context->total_count * calc_duration) / (double)(av_q2d(time_base1) * AV_TIME_BASE);
                         avpkt->dts = avpkt->pts;
                         avpkt->duration = (double)calc_duration / (double)(av_q2d(time_base1) * AV_TIME_BASE);
 
-                        if (avpkt->stream_index == context->video_track_id) {
-                            frame_idx++;
-                        }
+                        ++context->total_count;
                         if (context->avfmt_in_ctx->nb_streams > 2) {
                             avpkt->stream_index -= 1;
                         }
@@ -784,9 +780,7 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                         context->fifo_v->skip(total_len);
 
                         if (ret < 0) {
-                            char err_msg[128] = {0};
-                            av_strerror(ret, err_msg, sizeof(err_msg));
-                            SAMPLE_LOG_E("Video write frame: %s\n", err_msg);
+                            SAMPLE_LOG_E("Video write frame: %s", context->cookie, AVERRMSG(ret, msg));
                             break;
                         }
                     }
@@ -809,9 +803,9 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                     /* Decode one frame worth of audio samples, convert it to the
                      * output sample format and put it into the FIFO buffer. */
                     if (read_decode_convert_and_store(context->audio_fifo, avpkt, context->avfmt_in_ctx,
-                                                      context->input_codec_context,
-                                                      context->output_codec_context,
-                                                      context->resample_context, &finished))
+                            context->input_codec_context,
+                            context->output_codec_context,
+                            context->resample_context, &finished))
                         break;
 
                     /* If we are at the end of the input file, we continue
@@ -828,7 +822,7 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                     /* Take one frame worth of audio samples from the FIFO buffer,
                      * encode it and write it to the output file. */
                     if (load_encode_and_write(context->audio_fifo, context->avfmt_rtmp_ctx,
-                                              context->output_codec_context))
+                            context->output_codec_context))
                         break;
 
                 /* If we are at the end of the input file and have encoded
@@ -837,8 +831,7 @@ static void ffmpeg_demux_thread(ffmpeg_context *context) {
                     int data_written;
                     /* Flush the encoder as it may have delayed frames. */
                     do {
-                        if (encode_audio_frame(NULL, context->avfmt_rtmp_ctx,
-                                               context->output_codec_context, &data_written))
+                        if (encode_audio_frame(NULL, context->avfmt_rtmp_ctx, context->output_codec_context, &data_written))
                             break;
                     } while (data_written);
                     break;
@@ -916,7 +909,7 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
                 context->video_track_id = i;                             // 视频流索引
                 context->src_video = context->avfmt_in_ctx->streams[i];  // 保存输入的视频流信息
                 SAMPLE_LOG_I("[input %d] the video frame pixels: width: %d, height: %d, pixel format: %d\n", i,
-                             context->src_video->codecpar->width, context->src_video->codecpar->height, context->src_video->codecpar->format);
+                    context->src_video->codecpar->width, context->src_video->codecpar->height, context->src_video->codecpar->format);
 
                 context->dest_video = avformat_new_stream(context->avfmt_rtmp_ctx, NULL);
                 if (!context->dest_video) {
@@ -930,6 +923,9 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
                         SAMPLE_LOG_E("avcodec_parameters_copy\n");
                         break;
                     }
+
+                    context->dest_video->codecpar->codec_id = context->encodec;
+                    context->dest_video->codecpar->codec_tag = 0;
                 } else if (context->encodec == AV_CODEC_ID_HEVC) {
                     const AVCodec *encoder = avcodec_find_encoder_by_name("libx265");
                     if (!encoder) {
@@ -968,12 +964,15 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
                     avcodec_free_context(&enc_ctx);
                 }
 
-                context->dest_video->codecpar->codec_id = context->encodec;
-                context->dest_video->codecpar->codec_tag = 0;
             } else if (AVMEDIA_TYPE_AUDIO == context->avfmt_in_ctx->streams[i]->codecpar->codec_type) {
                 context->audio_track_id = i;                             // 音频流索引
                 context->src_audio = context->avfmt_in_ctx->streams[i];  // 保存输入的音频流信息
                 SAMPLE_LOG_I("[input %d] audio sample format: %d\n", i, context->src_audio->codecpar->format);
+
+                audio_index = i;
+                if (context->avfmt_in_ctx->nb_streams > 2) {
+                    audio_index -= 1;
+                }
 
                 /* Find a decoder for the audio stream. */
                 const AVCodec *input_codec = avcodec_find_decoder(context->src_audio->codecpar->codec_id);
@@ -1063,13 +1062,13 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
                  * Set the conversion parameters.
                  */
                 ret = swr_alloc_set_opts2(&context->resample_context,
-                                          &context->output_codec_context->ch_layout,
-                                          context->output_codec_context->sample_fmt,
-                                          context->output_codec_context->sample_rate,
-                                          &context->input_codec_context->ch_layout,
-                                          context->input_codec_context->sample_fmt,
-                                          context->input_codec_context->sample_rate,
-                                          0, NULL);
+                    &context->output_codec_context->ch_layout,
+                    context->output_codec_context->sample_fmt,
+                    context->output_codec_context->sample_rate,
+                    &context->input_codec_context->ch_layout,
+                    context->input_codec_context->sample_fmt,
+                    context->input_codec_context->sample_rate,
+                    0, NULL);
                 if (ret < 0) {
                     SAMPLE_LOG_E("Could not allocate resample context\n");
                     return ret;
@@ -1125,7 +1124,7 @@ static int ffmpeg_init_demuxer(ffmpeg_context *context) {
             }
 
             SAMPLE_LOG_I("[%d] url %s: codec %d, %dx%d, fps %d", context->cookie, context->url.c_str(), context->info.video.payload,
-                         context->info.video.width, context->info.video.height, context->info.video.fps);
+                context->info.video.width, context->info.video.height, context->info.video.fps);
         }
 
         if (PT_H264 == context->info.video.payload || PT_H265 == context->info.video.payload) {
